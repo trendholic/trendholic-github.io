@@ -1,0 +1,90 @@
+// =====================================================================
+//  Shared helpers: Supabase client, money formatting, invoice + WhatsApp
+// =====================================================================
+(function () {
+  const cfg = window.APP_CONFIG || {};
+
+  const configured =
+    cfg.SUPABASE_URL &&
+    cfg.SUPABASE_ANON_KEY &&
+    !cfg.SUPABASE_URL.includes("YOUR-PROJECT") &&
+    !cfg.SUPABASE_ANON_KEY.includes("YOUR-PUBLIC");
+
+  let sb = null;
+  if (configured && window.supabase) {
+    sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+  }
+
+  // Format a number as currency, with thousands separators.
+  function money(n) {
+    const v = Number(n || 0);
+    return cfg.CURRENCY + v.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function invoiceNo(orderNo, dateStr) {
+    const year = (dateStr ? new Date(dateStr) : new Date()).getFullYear();
+    return "INV-" + year + "-" + String(orderNo).padStart(4, "0");
+  }
+
+  function fmtDate(d) {
+    return new Date(d).toLocaleString(undefined, {
+      year: "numeric", month: "short", day: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    });
+  }
+
+  // Build the plain-text invoice that gets sent to WhatsApp.
+  function buildInvoiceText(order, profile) {
+    const lines = [];
+    lines.push("*" + cfg.STORE_NAME + " — New Order*");
+    lines.push("Invoice: " + invoiceNo(order.order_no, order.created_at));
+    lines.push("Date: " + fmtDate(order.created_at));
+    if (profile) {
+      lines.push("Customer: " + (profile.shop_name || profile.contact_name || ""));
+      if (profile.contact_name && profile.shop_name) lines.push("Contact: " + profile.contact_name);
+      if (profile.phone) lines.push("Phone: " + profile.phone);
+    }
+    lines.push("");
+    lines.push("*Items*");
+    order.items.forEach((it, i) => {
+      lines.push(
+        (i + 1) + ". " + it.name + " (" + it.unit + ")  " +
+        it.qty + " × " + money(it.price) + " = " + money(it.qty * it.price)
+      );
+    });
+    lines.push("");
+    lines.push("Subtotal: " + money(order.subtotal));
+    if (order.discount_amount > 0) {
+      lines.push("Discount (" + order.discount_pct + "%): -" + money(order.discount_amount));
+    }
+    if (order.tax_amount > 0) {
+      lines.push(cfg.TAX_LABEL + " (" + order.tax_rate + "%): " + money(order.tax_amount));
+    }
+    lines.push("*TOTAL: " + money(order.total) + "*");
+    if (order.note) {
+      lines.push("");
+      lines.push("Note: " + order.note);
+    }
+    return lines.join("\n");
+  }
+
+  function whatsappLink(text, toNumber) {
+    const num = (toNumber || cfg.STORE_WHATSAPP || "").replace(/[^0-9]/g, "");
+    return "https://wa.me/" + num + "?text=" + encodeURIComponent(text);
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  window.Store = {
+    cfg, sb, configured,
+    money, invoiceNo, fmtDate,
+    buildInvoiceText, whatsappLink, escapeHtml
+  };
+})();
