@@ -121,19 +121,32 @@
   // ---------------- Products ----------------
   async function addProduct(e) {
     e.preventDefault();
-    const payload = {
-      name: $("pName").value.trim(),
-      description: $("pDesc").value.trim() || null,
-      category: $("pCategory").value.trim() || "General",
-      unit: $("pUnit").value.trim() || "unit",
-      price: parseFloat($("pPrice").value) || 0,
-      moq: parseInt($("pMoq").value, 10) || 1,
-      sort: parseInt($("pSort").value, 10) || 0
-    };
-    const { error } = await S.sb.from("products").insert(payload);
-    if (error) { alert(error.message); return; }
-    e.target.reset();
-    loadProducts();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = "Saving…";
+    try {
+      let image_url = null;
+      const file = $("pImage").files[0];
+      if (file) image_url = await S.uploadProductImage(file);
+
+      const payload = {
+        name: $("pName").value.trim(),
+        description: $("pDesc").value.trim() || null,
+        image_url,
+        category: $("pCategory").value.trim() || "General",
+        unit: $("pUnit").value.trim() || "unit",
+        price: parseFloat($("pPrice").value) || 0,
+        moq: parseInt($("pMoq").value, 10) || 1,
+        sort: parseInt($("pSort").value, 10) || 0
+      };
+      const { error } = await S.sb.from("products").insert(payload);
+      if (error) throw error;
+      e.target.reset();
+      loadProducts();
+    } catch (err) {
+      alert(err.message || err);
+    } finally {
+      btn.disabled = false; btn.textContent = "Add product";
+    }
   }
 
   async function loadProducts() {
@@ -147,7 +160,15 @@
     data.forEach((p) => {
       const row = document.createElement("div");
       row.className = "admin-row";
+      const thumb = p.image_url
+        ? `<img src="${S.escapeHtml(p.image_url)}" alt="" />`
+        : `<span class="card-thumb-ph">🌾</span>`;
       row.innerHTML = `
+        <div class="admin-thumb" title="Change photo">
+          ${thumb}
+          <input type="file" accept="image/*" class="photo-input" />
+          <span class="admin-thumb-edit">📷</span>
+        </div>
         <div class="admin-row-main">
           <div class="admin-row-title">
             ${S.escapeHtml(p.name)}
@@ -162,6 +183,17 @@
           <button class="btn small ghost" data-act="toggle">${p.active ? "Hide" : "Show"}</button>
           <button class="btn small" data-act="del">Delete</button>
         </div>`;
+
+      row.querySelector(".photo-input").addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+          const image_url = await S.uploadProductImage(file);
+          const { error } = await S.sb.from("products").update({ image_url }).eq("id", p.id);
+          if (error) throw error;
+          loadProducts();
+        } catch (err) { alert(err.message || err); }
+      });
 
       row.querySelector(".price").addEventListener("change", async (e) => {
         const price = parseFloat(e.target.value) || 0;

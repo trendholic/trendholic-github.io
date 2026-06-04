@@ -78,7 +78,8 @@ branch. In the repo: **Settings → Pages → Build from branch** → select you
 
 **You (store owner) — `admin.html`:**
 - **Customers** tab: approve new sign-ups, set each customer's discount %.
-- **Products** tab: add products, change prices inline, hide/show or delete items.
+- **Products** tab: add products, change prices inline, **upload a product photo**
+  (tap the little image box on any row to add/replace it), hide/show or delete items.
 - **Orders** tab: see every order, change its status (new → confirmed → fulfilled),
   and reply to the customer on WhatsApp.
 

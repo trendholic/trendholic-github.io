@@ -76,6 +76,18 @@
     return "https://wa.me/" + num + "?text=" + encodeURIComponent(text);
   }
 
+  // Upload a product photo to Supabase Storage and return its public URL.
+  async function uploadProductImage(file) {
+    if (!file) return null;
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = "p_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8) + "." + ext;
+    const { error } = await sb.storage.from("product-images")
+      .upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
+    if (error) throw error;
+    const { data } = sb.storage.from("product-images").getPublicUrl(path);
+    return data.publicUrl;
+  }
+
   function escapeHtml(s) {
     return String(s == null ? "" : s)
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -85,6 +97,6 @@
   window.Store = {
     cfg, sb, configured,
     money, invoiceNo, fmtDate,
-    buildInvoiceText, whatsappLink, escapeHtml
+    buildInvoiceText, whatsappLink, escapeHtml, uploadProductImage
   };
 })();

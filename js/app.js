@@ -201,7 +201,11 @@
     const qty = cart[p.id] || 0;
     const el = document.createElement("div");
     el.className = "card";
+    const thumb = p.image_url
+      ? `<img src="${S.escapeHtml(p.image_url)}" alt="${S.escapeHtml(p.name)}" loading="lazy" />`
+      : `<span class="card-thumb-ph">🌾</span>`;
     el.innerHTML = `
+      <div class="card-thumb">${thumb}</div>
       <div class="card-body">
         <div class="card-name">${S.escapeHtml(p.name)}</div>
         <div class="card-unit">${S.escapeHtml(p.unit)}</div>

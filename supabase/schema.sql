@@ -25,6 +25,7 @@ create table if not exists public.products (
   id          uuid primary key default gen_random_uuid(),
   name        text    not null,
   description text,                                 -- short blurb shown on the card
+  image_url   text,                                 -- product photo (Supabase Storage)
   category    text    not null default 'General',
   unit        text    not null default 'unit',      -- e.g. "Case (4 x 10 lb)"
   price       numeric not null check (price >= 0),   -- wholesale price per unit
@@ -33,8 +34,9 @@ create table if not exists public.products (
   active      boolean not null default true,
   created_at  timestamptz not null default now()
 );
--- if you already created the products table before, add the column:
+-- if you already created the products table before, add the new columns:
 alter table public.products add column if not exists description text;
+alter table public.products add column if not exists image_url   text;
 
 -- ---------------------------------------------------------------------
 -- 3. ORDERS  (one row per placed order; line items stored as JSON)
@@ -195,6 +197,29 @@ create policy orders_select on public.orders
 drop policy if exists orders_admin_update on public.orders;
 create policy orders_admin_update on public.orders
   for update using (public.is_admin()) with check (public.is_admin());
+
+-- =====================================================================
+--  PRODUCT IMAGE STORAGE
+--  A public bucket for product photos. Anyone can VIEW the images
+--  (they are not price data); only admins can upload/replace/delete.
+-- =====================================================================
+insert into storage.buckets (id, name, public)
+values ('product-images', 'product-images', true)
+on conflict (id) do nothing;
+
+drop policy if exists product_images_read   on storage.objects;
+drop policy if exists product_images_insert on storage.objects;
+drop policy if exists product_images_update on storage.objects;
+drop policy if exists product_images_delete on storage.objects;
+
+create policy product_images_read on storage.objects
+  for select using (bucket_id = 'product-images');
+create policy product_images_insert on storage.objects
+  for insert with check (bucket_id = 'product-images' and public.is_admin());
+create policy product_images_update on storage.objects
+  for update using (bucket_id = 'product-images' and public.is_admin());
+create policy product_images_delete on storage.objects
+  for delete using (bucket_id = 'product-images' and public.is_admin());
 
 -- =====================================================================
 --  SAMPLE PRODUCTS  (edit / delete these from the Admin page later)
