@@ -112,6 +112,7 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--green); out
 }
 .card-name { font-weight: 700; }
 .card-unit { color: var(--muted); font-size: .85rem; margin-bottom: 6px; }
+.card-desc { font-size: .82rem; color: #4b5563; margin-bottom: 8px; }
 .card-price { font-size: 1.15rem; font-weight: 800; color: var(--green-dark); }
 .card-price .per { font-size: .72rem; font-weight: 500; color: var(--muted); }
 .card-moq { font-size: .78rem; color: var(--muted); margin-top: 2px; }

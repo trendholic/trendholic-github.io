@@ -22,16 +22,19 @@ create table if not exists public.profiles (
 -- 2. PRODUCTS  (the wholesale catalog with prices)
 -- ---------------------------------------------------------------------
 create table if not exists public.products (
-  id         uuid primary key default gen_random_uuid(),
-  name       text    not null,
-  category   text    not null default 'General',
-  unit       text    not null default 'unit',     -- e.g. "25 kg bag", "case of 24"
-  price      numeric not null check (price >= 0),  -- wholesale price per unit
-  moq        integer not null default 1 check (moq >= 1),  -- minimum order quantity
-  sort       integer not null default 0,
-  active     boolean not null default true,
-  created_at timestamptz not null default now()
+  id          uuid primary key default gen_random_uuid(),
+  name        text    not null,
+  description text,                                 -- short blurb shown on the card
+  category    text    not null default 'General',
+  unit        text    not null default 'unit',      -- e.g. "Case (4 x 10 lb)"
+  price       numeric not null check (price >= 0),   -- wholesale price per unit
+  moq         integer not null default 1 check (moq >= 1),  -- minimum order quantity
+  sort        integer not null default 0,
+  active      boolean not null default true,
+  created_at  timestamptz not null default now()
 );
+-- if you already created the products table before, add the column:
+alter table public.products add column if not exists description text;
 
 -- ---------------------------------------------------------------------
 -- 3. ORDERS  (one row per placed order; line items stored as JSON)
@@ -196,19 +199,17 @@ create policy orders_admin_update on public.orders
 -- =====================================================================
 --  SAMPLE PRODUCTS  (edit / delete these from the Admin page later)
 -- =====================================================================
-insert into public.products (name, category, unit, price, moq, sort) values
-  ('Basmati Rice (Premium)',  'Grains & Pulses', '25 kg bag',     1850, 2, 10),
-  ('Sona Masoori Rice',       'Grains & Pulses', '25 kg bag',     1450, 2, 11),
-  ('Toor Dal',                'Grains & Pulses', '30 kg bag',     3600, 1, 12),
-  ('Chana Dal',               'Grains & Pulses', '30 kg bag',     2700, 1, 13),
-  ('Sunflower Oil',           'Oils & Ghee',     '15 L tin',      1980, 2, 20),
-  ('Groundnut Oil',           'Oils & Ghee',     '15 L tin',      2750, 1, 21),
-  ('Wheat Flour (Atta)',      'Flours',          '50 kg bag',     1650, 2, 30),
-  ('Sugar',                   'Essentials',      '50 kg bag',     2100, 2, 40),
-  ('Iodised Salt',            'Essentials',      'Case of 24x1kg', 360, 5, 41),
-  ('Tea Powder',              'Beverages',       'Case of 10x1kg', 2400, 1, 50),
-  ('Biscuits (Assorted)',     'Packaged Foods',  'Case of 48',     960, 2, 60),
-  ('Detergent Powder',        'Home Care',       'Case of 12x1kg', 720, 2, 70)
+insert into public.products (name, description, category, unit, price, moq, sort) values
+  ('Bahar Sella Rice 10LB x 4',    'Premium quality sella rice, perfect for every kitchen.', 'Rice', 'Case (4 x 10 lb)', 48, 1, 10),
+  ('Falak Extreme Rice x 4',       'Extra long grain rice for rich taste and aroma.',        'Rice', 'Case (x4)',        48, 1, 20),
+  ('M-Meraj Sella Rice 10LB x 4',  'High quality sella rice for fluffy, delicious meals.',   'Rice', 'Case (4 x 10 lb)', 40, 1, 30),
+  ('Ujala Basmati Rice 10LB x 4',  'Aromatic basmati rice with extra long grains.',          'Rice', 'Case (4 x 10 lb)', 40, 1, 40),
+  ('Aahubarah Sella Rice 10LB x 4','Quality sella rice for everyday cooking.',               'Rice', 'Case (4 x 10 lb)', 62, 1, 50),
+  ('Aahubarah Organic Rice 10LB x 4','100% organic rice, healthy and natural.',              'Rice', 'Case (4 x 10 lb)', 62, 1, 60),
+  ('Mother Sella Rice 10LB x 4',   'Trusted quality sella rice for every family.',           'Rice', 'Case (4 x 10 lb)', 64, 1, 70),
+  ('Baghlan Sella Rice 10LB x 4',  'Premium rice from the finest fields.',                   'Rice', 'Case (4 x 10 lb)', 62, 1, 80),
+  ('Bahar Basmati 10LB x 4',       'Aromatic basmati rice for special occasions.',           'Rice', 'Case (4 x 10 lb)', 42, 1, 90),
+  ('Kabuli Sella Rice 10LB x 4',   'High quality sella rice for delicious meals.',           'Rice', 'Case (4 x 10 lb)', 52, 1, 100)
 on conflict do nothing;
 
 -- =====================================================================

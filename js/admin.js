@@ -123,6 +123,7 @@
     e.preventDefault();
     const payload = {
       name: $("pName").value.trim(),
+      description: $("pDesc").value.trim() || null,
       category: $("pCategory").value.trim() || "General",
       unit: $("pUnit").value.trim() || "unit",
       price: parseFloat($("pPrice").value) || 0,

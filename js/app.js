@@ -205,6 +205,7 @@
       <div class="card-body">
         <div class="card-name">${S.escapeHtml(p.name)}</div>
         <div class="card-unit">${S.escapeHtml(p.unit)}</div>
+        ${p.description ? `<div class="card-desc">${S.escapeHtml(p.description)}</div>` : ""}
         <div class="card-price">${S.money(p.price)} <span class="per">/ ${S.escapeHtml(p.unit)}</span></div>
         <div class="card-moq">Min order: ${p.moq}</div>
       </div>
