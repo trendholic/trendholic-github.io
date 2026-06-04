@@ -1,0 +1,5 @@
+# Local dev / demo tooling — not part of the published site
+node_modules/
+package.json
+package-lock.json
+_demo/
