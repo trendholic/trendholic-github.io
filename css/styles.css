@@ -17,6 +17,9 @@
 }
 
 * { box-sizing: border-box; }
+/* The [hidden] attribute must always win over the display rules below
+   (.modal, .view.center, .topbar-actions, .sum-row, .pill all set display). */
+[hidden] { display: none !important; }
 html, body { margin: 0; padding: 0; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
