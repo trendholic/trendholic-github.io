@@ -99,7 +99,10 @@ create or replace function public.protect_profile_columns()
 returns trigger language plpgsql security definer
 set search_path = public as $$
 begin
-  if not public.is_admin() then
+  -- Only block a logged-in NON-admin web user from changing these fields.
+  -- Allow changes from the SQL editor / service role (auth.uid() is null)
+  -- and from admins, so the owner can be bootstrapped and manage customers.
+  if auth.uid() is not null and not public.is_admin() then
     new.approved     := old.approved;
     new.is_admin     := old.is_admin;
     new.discount_pct := old.discount_pct;
