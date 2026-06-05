@@ -225,9 +225,9 @@ create policy product_images_delete on storage.objects
 --  SAMPLE PRODUCTS  (edit / delete these from the Admin page later)
 -- =====================================================================
 insert into public.products (name, description, image_url, category, unit, price, moq, sort) values
-  ('Bahar Sella Rice 10LB x 4',    'Premium quality sella rice, perfect for every kitchen.', null,                         'Rice', 'Case (4 x 10 lb)', 48, 1, 10),
+  ('Bahar Sella Rice 10LB x 4',    'Premium quality sella rice, perfect for every kitchen.', 'images/bahar-sella.jpg',     'Rice', 'Case (4 x 10 lb)', 48, 1, 10),
   ('Falak Extreme Rice x 4',       'Extra long grain rice for rich taste and aroma.',        'images/falak.jpg',           'Rice', 'Case (x4)',        48, 1, 20),
-  ('M-Meraj Sella Rice 10LB x 4',  'High quality sella rice for fluffy, delicious meals.',   null,                         'Rice', 'Case (4 x 10 lb)', 40, 1, 30),
+  ('M-Meraj Sella Rice 10LB x 4',  'High quality sella rice for fluffy, delicious meals.',   'images/meraj.jpg',           'Rice', 'Case (4 x 10 lb)', 40, 1, 30),
   ('Ujala Basmati Rice 10LB x 4',  'Aromatic basmati rice with extra long grains.',          'images/ujala.jpg',           'Rice', 'Case (4 x 10 lb)', 40, 1, 40),
   ('Aahubarah Sella Rice 10LB x 4','Quality sella rice for everyday cooking.',               'images/aahubarah-sella.jpg', 'Rice', 'Case (4 x 10 lb)', 62, 1, 50),
   ('Aahubarah Organic Rice 10LB x 4','100% organic rice, healthy and natural.',              'images/aahubarah-organic.jpg','Rice', 'Case (4 x 10 lb)', 62, 1, 60),
