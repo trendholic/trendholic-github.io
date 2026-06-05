@@ -61,6 +61,16 @@
             <input type="password" id="loginPassword" required autocomplete="current-password" />
           </label>
           <button class="btn primary block" id="loginBtn" type="submit">Sign in</button>
+          <button class="link" id="forgotLink" type="button">Forgot password?</button>
+        </form>
+
+        <form id="forgotForm" hidden>
+          <p class="muted small">Enter your account email and we'll send you a link to reset your password.</p>
+          <label>Email
+            <input type="email" id="forgotEmail" required autocomplete="email" />
+          </label>
+          <button class="btn primary block" id="forgotBtn" type="submit">Send reset link</button>
+          <button class="link" id="backToLogin" type="button">← Back to sign in</button>
         </form>
 
         <form id="signupForm" hidden>
@@ -83,6 +93,22 @@
         </form>
 
         <p class="msg" id="authMsg"></p>
+      </div>
+    </section>
+
+    <!-- ============ SET NEW PASSWORD (arrived via reset link) ============ -->
+    <section class="view center" data-view="reset" hidden>
+      <div class="panel narrow auth">
+        <span class="logo big">🔑</span>
+        <h2>Set a new password</h2>
+        <p class="muted">Choose a new password for your account.</p>
+        <form id="resetForm">
+          <label>New password
+            <input type="password" id="newPassword" required minlength="6" autocomplete="new-password" />
+          </label>
+          <button class="btn primary block" type="submit">Update password</button>
+        </form>
+        <p class="msg" id="resetMsg"></p>
       </div>
     </section>
 

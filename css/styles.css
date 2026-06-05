@@ -94,6 +94,8 @@ input, textarea, select {
   border-radius: 10px; font-size: .95rem; font-family: inherit; background: #fff; color: var(--ink);
 }
 input:focus, textarea:focus, select:focus { outline: 2px solid var(--green); outline-offset: 0; border-color: var(--green); }
+.link { display: block; width: 100%; margin-top: 10px; background: none; border: none; color: var(--green-dark); font-weight: 600; font-size: .88rem; cursor: pointer; padding: 6px; }
+.link:hover { text-decoration: underline; }
 .msg { margin: 10px 0 0; font-size: .88rem; min-height: 1em; }
 .msg.error { color: var(--danger); }
 .msg.ok { color: var(--green-dark); }

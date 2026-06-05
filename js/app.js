@@ -10,6 +10,7 @@
   let profile = null;
   let products = [];
   let cart = {};               // { productId: qty }
+  let recovering = false;      // true while resetting password via email link
 
   // ---------------------------------------------------------------
   //  Boot
@@ -29,14 +30,20 @@
     wireAuthForms();
     wireShopUI();
 
-    // React to login / logout.
-    S.sb.auth.onAuthStateChange((_event, session) => {
+    // React to login / logout / password-recovery.
+    S.sb.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") { recovering = true; showView("reset"); return; }
+      if (recovering) return;            // ignore other events mid-reset
       if (session) onLoggedIn();
       else onLoggedOut();
     });
 
+    // If the user arrived from a reset email, show the "set new password" screen.
+    if (window.location.hash.includes("type=recovery")) recovering = true;
+
     const { data } = await S.sb.auth.getSession();
-    if (data.session) onLoggedIn();
+    if (recovering) showView("reset");
+    else if (data.session) onLoggedIn();
     else onLoggedOut();
   }
 
@@ -93,6 +100,42 @@
       switchAuthTab("login");
     });
 
+    // ---- forgot / reset password ----
+    $("forgotLink").addEventListener("click", () => {
+      $("loginForm").hidden = true;
+      $("forgotForm").hidden = false;
+      setAuthMsg("");
+    });
+    $("backToLogin").addEventListener("click", () => {
+      $("forgotForm").hidden = true;
+      $("loginForm").hidden = false;
+      setAuthMsg("");
+    });
+    $("forgotForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = $("forgotBtn"); btn.disabled = true; btn.textContent = "Sending…";
+      const redirectTo = window.location.origin + window.location.pathname;
+      const { error } = await S.sb.auth.resetPasswordForEmail($("forgotEmail").value.trim(), { redirectTo });
+      btn.disabled = false; btn.textContent = "Send reset link";
+      if (error) setAuthMsg(error.message, true);
+      else setAuthMsg("Done! Check your email for the reset link (look in spam too).", false);
+    });
+
+    $("resetForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector("button");
+      btn.disabled = true; btn.textContent = "Updating…";
+      const { error } = await S.sb.auth.updateUser({ password: $("newPassword").value });
+      btn.disabled = false; btn.textContent = "Update password";
+      const el = $("resetMsg");
+      if (error) { el.textContent = error.message; el.className = "msg error"; return; }
+      el.textContent = "Password updated! Signing you in…";
+      el.className = "msg ok";
+      recovering = false;
+      history.replaceState(null, "", window.location.pathname);  // strip recovery token from URL
+      setTimeout(onLoggedIn, 1200);
+    });
+
     $("logoutBtn").addEventListener("click", () => S.sb.auth.signOut());
     $("logoutBtn2").addEventListener("click", () => S.sb.auth.signOut());
   }
@@ -103,6 +146,7 @@
     $("tabSignup").classList.toggle("active", !login);
     $("loginForm").hidden = !login;
     $("signupForm").hidden = login;
+    $("forgotForm").hidden = true;
     setAuthMsg("");
   }
 
