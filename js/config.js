@@ -6,8 +6,8 @@
 window.APP_CONFIG = {
   // ---- Supabase (free backend) -------------------------------------
   // Supabase Dashboard → Project Settings → Data API / API Keys
-  SUPABASE_URL:      "https://YOUR-PROJECT-ref.supabase.co",
-  SUPABASE_ANON_KEY: "YOUR-PUBLIC-ANON-KEY",
+  SUPABASE_URL:      "https://icntqusbnzblctwisdvv.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbnRxdXNibnpibGN0d2lzZHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MTM3ODksImV4cCI6MjA5NjE4OTc4OX0.9pBuzDRavaWzQUHMxhqUls-1-O0IGngEFyYNCGAVp-I",
 
   // ---- Your store --------------------------------------------------
   STORE_NAME:     "Fresh Wholesale Distributor",
