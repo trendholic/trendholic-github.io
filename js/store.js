@@ -76,6 +76,31 @@
     return "https://wa.me/" + num + "?text=" + encodeURIComponent(text);
   }
 
+  // Build a hosted checkout URL for an order's total, or null if payments
+  // are not configured. Keeps card handling entirely on the provider's
+  // trusted page — nothing sensitive ever touches this site.
+  function paymentLink(order) {
+    const link = (cfg.PAYMENT_LINK || "").trim();
+    if (!link || !order) return null;
+    const amount = Number(order.total || 0).toFixed(2);
+    const provider = (cfg.PAYMENT_PROVIDER || "").toLowerCase();
+
+    if (provider === "paypal") {
+      // PayPal.me accepts /AMOUNTCURRENCY to pre-fill the amount, e.g. /48.00USD
+      const base = link.replace(/\/+$/, "");
+      return base + "/" + amount + (cfg.PAYMENT_CURRENCY || "USD");
+    }
+
+    // Generic hosted link (Stripe Payment Link, Square, etc.). Fill in any
+    // {amount} / {invoice} placeholders; otherwise return the link as-is.
+    const inv = invoiceNo(order.order_no, order.created_at);
+    if (link.includes("{amount}") || link.includes("{invoice}")) {
+      return link.replace(/\{amount\}/g, encodeURIComponent(amount))
+                 .replace(/\{invoice\}/g, encodeURIComponent(inv));
+    }
+    return link;
+  }
+
   // Upload a product photo to Supabase Storage and return its public URL.
   async function uploadProductImage(file) {
     if (!file) return null;
@@ -111,6 +136,6 @@
   window.Store = {
     cfg, sb, configured,
     money, invoiceNo, fmtDate,
-    buildInvoiceText, whatsappLink, escapeHtml, uploadProductImage, uploadResellerDoc
+    buildInvoiceText, whatsappLink, paymentLink, escapeHtml, uploadProductImage, uploadResellerDoc
   };
 })();

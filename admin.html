@@ -58,6 +58,7 @@
       <div class="admin-tabs">
         <button class="admin-tab active" data-tab="customers" type="button">Customers</button>
         <button class="admin-tab" data-tab="products" type="button">Products</button>
+        <button class="admin-tab" data-tab="inventory" type="button">Inventory</button>
         <button class="admin-tab" data-tab="orders" type="button">Orders</button>
       </div>
 
@@ -77,6 +78,7 @@
             <label>Unit<input type="text" id="pUnit" placeholder="e.g. Case (4 x 10 lb)" /></label>
             <label>Price<input type="number" id="pPrice" min="0" step="0.01" required /></label>
             <label>Min order qty<input type="number" id="pMoq" min="1" step="1" value="1" /></label>
+            <label>Stock<input type="number" id="pStock" min="0" step="1" placeholder="blank = untracked" /></label>
             <label>Sort<input type="number" id="pSort" step="1" value="0" /></label>
           </div>
           <label>Description<input type="text" id="pDesc" placeholder="Short blurb shown on the product card" /></label>
@@ -84,6 +86,13 @@
           <button class="btn primary" type="submit">Add product</button>
         </form>
         <div id="productsList" class="admin-list"></div>
+      </div>
+
+      <!-- inventory -->
+      <div data-panel="inventory" hidden>
+        <p class="muted">Track on-hand stock. Stock drops automatically as customers order; leave a value blank to mark a product as untracked / unlimited.</p>
+        <div id="invSummary" class="inv-summary"></div>
+        <div id="inventoryList" class="admin-list"></div>
       </div>
 
       <!-- orders -->

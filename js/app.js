@@ -323,6 +323,24 @@
     const thumb = p.image_url
       ? `<img src="${S.escapeHtml(p.image_url)}" alt="${S.escapeHtml(p.name)}" loading="lazy" />`
       : `<span class="card-thumb-ph">🌾</span>`;
+
+    // Stock-aware status (stock === null means the product is not tracked).
+    const low = Number(cfg.LOW_STOCK_THRESHOLD || 5);
+    const tracked = p.stock != null;
+    const out = tracked && p.stock <= 0;
+    let stockHtml = "";
+    if (out) stockHtml = '<div class="card-stock out">Out of stock</div>';
+    else if (tracked && p.stock <= low) stockHtml = `<div class="card-stock low">Only ${p.stock} left</div>`;
+    else if (tracked) stockHtml = '<div class="card-stock in">In stock</div>';
+
+    const qtyHtml = out
+      ? '<div class="qty-out">Unavailable</div>'
+      : `<div class="qty">
+        <button type="button" class="qbtn" data-act="dec" aria-label="decrease">−</button>
+        <input type="number" min="0" step="1" value="${qty}" class="qinput" inputmode="numeric" />
+        <button type="button" class="qbtn" data-act="inc" aria-label="increase">+</button>
+      </div>`;
+
     el.innerHTML = `
       <div class="card-thumb">${thumb}</div>
       <div class="card-body">
@@ -331,17 +349,19 @@
         ${p.description ? `<div class="card-desc">${S.escapeHtml(p.description)}</div>` : ""}
         <div class="card-price">${S.money(p.price)} <span class="per">/ ${S.escapeHtml(p.unit)}</span></div>
         <div class="card-moq">Min order: ${p.moq}</div>
+        ${stockHtml}
       </div>
-      <div class="qty">
-        <button type="button" class="qbtn" data-act="dec" aria-label="decrease">−</button>
-        <input type="number" min="0" step="1" value="${qty}" class="qinput" inputmode="numeric" />
-        <button type="button" class="qbtn" data-act="inc" aria-label="increase">+</button>
-      </div>`;
+      ${qtyHtml}`;
+
+    if (out) return el;
+
+    // Clamp a requested quantity to available stock when the product is tracked.
+    const cap = (v) => (tracked ? Math.min(v, p.stock) : v);
 
     const input = el.querySelector(".qinput");
     el.querySelector('[data-act="inc"]').addEventListener("click", () => {
       const cur = parseInt(input.value || "0", 10) || 0;
-      setQty(p, cur === 0 ? p.moq : cur + 1, input);
+      setQty(p, cap(cur === 0 ? p.moq : cur + 1), input);
     });
     el.querySelector('[data-act="dec"]').addEventListener("click", () => {
       const cur = parseInt(input.value || "0", 10) || 0;
@@ -352,7 +372,7 @@
     input.addEventListener("change", () => {
       let v = parseInt(input.value || "0", 10) || 0;
       if (v > 0 && v < p.moq) v = p.moq;
-      setQty(p, Math.max(0, v), input);
+      setQty(p, Math.max(0, cap(v)), input);
     });
     return el;
   }
@@ -503,6 +523,17 @@
     $("invTaxLabel").textContent = cfg.TAX_LABEL + " (" + order.tax_rate + "%)";
     $("invTax").textContent = S.money(order.tax_amount);
     $("invTotal").textContent = S.money(order.total);
+
+    // Online payment: show a trusted, hosted checkout button if configured.
+    const payUrl = S.paymentLink(order);
+    const payBtn = $("payOnlineBtn"), payTrust = $("payTrust");
+    if (payUrl) {
+      payBtn.hidden = false; payTrust.hidden = false;
+      $("payBrand").textContent = cfg.PAYMENT_BRAND || "our payment partner";
+      payBtn.onclick = () => window.open(payUrl, "_blank", "noopener");
+    } else {
+      payBtn.hidden = true; payTrust.hidden = true;
+    }
 
     $("invoiceModal").hidden = false;
     $("cartPanel").classList.remove("open");

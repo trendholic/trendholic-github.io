@@ -66,6 +66,7 @@
       p.hidden = p.getAttribute("data-panel") !== tab);
     if (tab === "customers") loadCustomers();
     if (tab === "products") loadProducts();
+    if (tab === "inventory") loadInventory();
     if (tab === "orders") loadOrders();
   }
 
@@ -128,6 +129,7 @@
       const file = $("pImage").files[0];
       if (file) image_url = await S.uploadProductImage(file);
 
+      const stockRaw = $("pStock").value.trim();
       const payload = {
         name: $("pName").value.trim(),
         description: $("pDesc").value.trim() || null,
@@ -136,6 +138,7 @@
         unit: $("pUnit").value.trim() || "unit",
         price: parseFloat($("pPrice").value) || 0,
         moq: parseInt($("pMoq").value, 10) || 1,
+        stock: stockRaw === "" ? null : Math.max(0, parseInt(stockRaw, 10) || 0),
         sort: parseInt($("pSort").value, 10) || 0
       };
       const { error } = await S.sb.from("products").insert(payload);
@@ -173,6 +176,7 @@
           <div class="admin-row-title">
             ${S.escapeHtml(p.name)}
             ${p.active ? "" : '<span class="pill warn">hidden</span>'}
+            ${stockBadge(p)}
           </div>
           <div class="muted small">${S.escapeHtml(p.category)} · ${S.escapeHtml(p.unit)} · MOQ ${p.moq}</div>
         </div>
@@ -213,6 +217,71 @@
     });
   }
 
+  // ---------------- Inventory ----------------
+  function lowStock() { return Number(cfg.LOW_STOCK_THRESHOLD || 5); }
+
+  function stockBadge(p) {
+    if (p.stock == null) return '<span class="pill">untracked</span>';
+    if (p.stock <= 0) return '<span class="pill warn">out of stock</span>';
+    if (p.stock <= lowStock()) return '<span class="pill warn">low · ' + p.stock + ' left</span>';
+    return '<span class="pill ok">' + p.stock + ' in stock</span>';
+  }
+
+  async function setStock(id, value) {
+    const stock = value === "" ? null : Math.max(0, parseInt(value, 10) || 0);
+    const { error } = await S.sb.from("products").update({ stock }).eq("id", id);
+    if (error) alert(error.message);
+    return !error;
+  }
+
+  async function loadInventory() {
+    const { data, error } = await S.sb.from("products")
+      .select("*").order("category").order("name");
+    const wrap = $("inventoryList");
+    const sum = $("invSummary");
+    if (error) { wrap.innerHTML = '<p class="msg error">' + S.escapeHtml(error.message) + "</p>"; sum.innerHTML = ""; return; }
+    if (!data.length) { wrap.innerHTML = '<p class="muted">No products yet. Add some on the Products tab.</p>'; sum.innerHTML = ""; return; }
+
+    const tracked = data.filter((p) => p.stock != null);
+    const out = tracked.filter((p) => p.stock <= 0).length;
+    const low = tracked.filter((p) => p.stock > 0 && p.stock <= lowStock()).length;
+    const units = tracked.reduce((s, p) => s + (p.stock || 0), 0);
+    sum.innerHTML =
+      '<div class="inv-stat"><span class="inv-num">' + data.length + '</span>Products</div>' +
+      '<div class="inv-stat"><span class="inv-num">' + tracked.length + '</span>Tracked</div>' +
+      '<div class="inv-stat ' + (low ? "warn" : "") + '"><span class="inv-num">' + low + '</span>Low stock</div>' +
+      '<div class="inv-stat ' + (out ? "danger" : "") + '"><span class="inv-num">' + out + '</span>Out of stock</div>' +
+      '<div class="inv-stat"><span class="inv-num">' + units + '</span>Units on hand</div>';
+
+    wrap.innerHTML = "";
+    data.forEach((p) => {
+      const row = document.createElement("div");
+      row.className = "admin-row";
+      row.innerHTML = `
+        <div class="admin-row-main">
+          <div class="admin-row-title">${S.escapeHtml(p.name)} ${stockBadge(p)}</div>
+          <div class="muted small">${S.escapeHtml(p.category)} · ${S.escapeHtml(p.unit)}</div>
+        </div>
+        <div class="admin-row-actions">
+          <label class="inline">On hand
+            <input type="number" min="0" step="1" value="${p.stock == null ? "" : p.stock}"
+                   placeholder="untracked" class="stock" style="width:90px" />
+          </label>
+          <button class="btn small ghost" data-act="restock">Restock +10</button>
+        </div>`;
+
+      const input = row.querySelector(".stock");
+      input.addEventListener("change", async () => {
+        if (await setStock(p.id, input.value.trim())) loadInventory();
+      });
+      row.querySelector('[data-act="restock"]').addEventListener("click", async () => {
+        const base = p.stock == null ? 0 : p.stock;
+        if (await setStock(p.id, String(base + 10))) loadInventory();
+      });
+      wrap.appendChild(row);
+    });
+  }
+
   // ---------------- Orders ----------------
   async function loadOrders() {
     const { data, error } = await S.sb.from("orders")
@@ -233,15 +302,17 @@
              <td class="num">${S.money(it.price)}</td>
              <td class="num">${S.money(it.qty * it.price)}</td></tr>`).join("");
 
+      const paid = o.payment_status === "paid";
       card.innerHTML = `
         <div class="order-head">
           <div>
             <strong>${S.invoiceNo(o.order_no, o.created_at)}</strong>
             <span class="pill status-${S.escapeHtml(o.status)}">${S.escapeHtml(o.status)}</span>
+            <span class="pill ${paid ? "ok" : "warn"}">${paid ? "paid" : "unpaid"}</span>
           </div>
           <div class="muted small">${S.fmtDate(o.created_at)}</div>
         </div>
-        <div class="muted small">${S.escapeHtml(prof.shop_name || "")}${prof.phone ? " · " + S.escapeHtml(prof.phone) : ""}</div>
+        <div class="muted small">${S.escapeHtml(prof.shop_name || "")}${prof.phone ? " · " + S.escapeHtml(prof.phone) : ""}${paid && o.paid_at ? " · paid " + S.fmtDate(o.paid_at) : ""}</div>
         <table class="invoice-table"><tbody>${itemsHtml}</tbody></table>
         <div class="order-foot">
           <strong>Total ${S.money(o.total)}</strong>
@@ -250,6 +321,7 @@
               ${["new","confirmed","fulfilled","cancelled"].map((s) =>
                 `<option value="${s}" ${s===o.status?"selected":""}>${s}</option>`).join("")}
             </select>
+            <button class="btn small ${paid ? "ghost" : "primary"}" data-act="pay">${paid ? "Mark unpaid" : "Mark paid"}</button>
             <a class="btn small whatsapp" target="_blank">Reply on WhatsApp</a>
           </div>
         </div>`;
@@ -257,6 +329,12 @@
       card.querySelector(".status").addEventListener("change", async (e) => {
         const { error } = await S.sb.from("orders").update({ status: e.target.value }).eq("id", o.id);
         if (error) alert(error.message); else loadOrders();
+      });
+      card.querySelector('[data-act="pay"]').addEventListener("click", async (e) => {
+        e.target.disabled = true;
+        const { error } = await S.sb.from("orders")
+          .update({ payment_status: paid ? "unpaid" : "paid" }).eq("id", o.id);
+        if (error) { alert(error.message); e.target.disabled = false; } else loadOrders();
       });
       const wa = card.querySelector("a.whatsapp");
       wa.href = S.whatsappLink(S.buildInvoiceText(o, prof), prof.phone || "");

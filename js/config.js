@@ -20,5 +20,26 @@ window.APP_CONFIG = {
   // ---- Money -------------------------------------------------------
   CURRENCY:   "$",       // symbol shown next to prices
   TAX_LABEL:  "Tax",     // label for tax line on the invoice
-  TAX_RATE:   0          // tax percent applied to orders, e.g. 5 (use 0 for none)
+  TAX_RATE:   0,         // tax percent applied to orders, e.g. 5 (use 0 for none)
+
+  // ---- Inventory ---------------------------------------------------
+  // Products at or below this quantity show an "Only N left" badge.
+  // Leave a product's stock blank in Admin to mark it as untracked / unlimited.
+  LOW_STOCK_THRESHOLD: 5,
+
+  // ---- Online payments (optional) ----------------------------------
+  // Lets customers pay the invoice on a trusted, hosted checkout page.
+  // Leave PAYMENT_LINK empty to hide the "Pay online" button entirely.
+  //
+  //  • PayPal.me  — PAYMENT_PROVIDER: "paypal", and PAYMENT_LINK your page,
+  //                 e.g. "https://www.paypal.com/paypalme/YourStore".
+  //                 The order total is appended automatically so the amount
+  //                 is pre-filled for the customer (most frictionless).
+  //  • Stripe / Square / any hosted link — PAYMENT_PROVIDER: "link", and
+  //                 PAYMENT_LINK your checkout URL. You can put {amount} and
+  //                 {invoice} placeholders in the URL and they’ll be filled in.
+  PAYMENT_PROVIDER: "paypal",                              // "paypal" | "link" | "" (off)
+  PAYMENT_LINK:     "https://www.paypal.com/paypalme/trendholic",
+  PAYMENT_CURRENCY: "USD",                                 // ISO code for PayPal.me amounts
+  PAYMENT_BRAND:    "PayPal"                               // shown in the "secured by …" line
 };

@@ -41,6 +41,7 @@ create table if not exists public.products (
   unit        text    not null default 'unit',      -- e.g. "Case (4 x 10 lb)"
   price       numeric not null check (price >= 0),   -- wholesale price per unit
   moq         integer not null default 1 check (moq >= 1),  -- minimum order quantity
+  stock       integer,                                 -- on-hand qty; NULL = untracked / unlimited
   sort        integer not null default 0,
   active      boolean not null default true,
   created_at  timestamptz not null default now()
@@ -48,6 +49,7 @@ create table if not exists public.products (
 -- if you already created the products table before, add the new columns:
 alter table public.products add column if not exists description text;
 alter table public.products add column if not exists image_url   text;
+alter table public.products add column if not exists stock       integer;
 
 -- ---------------------------------------------------------------------
 -- 3. ORDERS  (one row per placed order; line items stored as JSON)
@@ -64,9 +66,14 @@ create table if not exists public.orders (
   tax_amount      numeric not null default 0,
   total           numeric not null default 0,
   note            text,
-  status          text    not null default 'new', -- new | confirmed | fulfilled | cancelled
+  status          text    not null default 'new',     -- new | confirmed | fulfilled | cancelled
+  payment_status  text    not null default 'unpaid',  -- unpaid | paid
+  paid_at         timestamptz,
   created_at      timestamptz not null default now()
 );
+-- if you already created the orders table before, add the new columns:
+alter table public.orders add column if not exists payment_status text not null default 'unpaid';
+alter table public.orders add column if not exists paid_at        timestamptz;
 
 -- =====================================================================
 --  HELPER FUNCTIONS  (SECURITY DEFINER avoids RLS recursion on profiles)
@@ -145,6 +152,8 @@ declare
   pid      uuid;
   q        numeric;
   p        numeric;
+  st       integer;
+  pname    text;
   sub      numeric := 0;
   drate    numeric := 0;
 begin
@@ -156,9 +165,24 @@ begin
     pid := (it->>'product_id')::uuid;
     q   := coalesce((it->>'qty')::numeric, 0);
     if q <= 0 then raise exception 'Invalid quantity for product %', pid; end if;
-    select price into p from public.products where id = pid and active = true;
+    -- Lock the product row so concurrent orders can't oversell the same stock.
+    select price, stock, name into p, st, pname
+      from public.products where id = pid and active = true for update;
     if p is null then raise exception 'Unknown or inactive product %', pid; end if;
+    -- Enforce inventory only when the product is stock-tracked (stock not null).
+    if st is not null and q > st then
+      raise exception 'Not enough stock for "%": % left, % requested', pname, st, q;
+    end if;
     sub := sub + (p * q);
+  end loop;
+
+  -- Passed all checks — now decrement on-hand stock for tracked products.
+  for it in select * from jsonb_array_elements(new.items) loop
+    pid := (it->>'product_id')::uuid;
+    q   := coalesce((it->>'qty')::numeric, 0);
+    update public.products
+       set stock = stock - q
+     where id = pid and stock is not null;
   end loop;
 
   select coalesce(discount_pct, 0) into drate from public.profiles where id = new.user_id;
@@ -178,6 +202,25 @@ drop trigger if exists finalize_order_trg on public.orders;
 create trigger finalize_order_trg
   before insert on public.orders
   for each row execute function public.finalize_order();
+
+-- Stamp / clear paid_at automatically whenever payment_status changes,
+-- so the admin only has to flip the status.
+create or replace function public.stamp_payment()
+returns trigger language plpgsql
+set search_path = public as $$
+begin
+  if new.payment_status = 'paid' and coalesce(old.payment_status,'') <> 'paid' then
+    new.paid_at := now();
+  elsif new.payment_status <> 'paid' then
+    new.paid_at := null;
+  end if;
+  return new;
+end; $$;
+
+drop trigger if exists stamp_payment_trg on public.orders;
+create trigger stamp_payment_trg
+  before update on public.orders
+  for each row execute function public.stamp_payment();
 
 -- =====================================================================
 --  ROW LEVEL SECURITY  (this is what hides prices from outsiders)

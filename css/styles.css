@@ -231,6 +231,37 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--green); out
 .order-actions { display: flex; gap: 8px; align-items: center; }
 .order-actions select { width: auto; }
 
+/* ---- storefront stock status ---- */
+.card-stock { font-size: .78rem; font-weight: 700; margin-top: 4px; }
+.card-stock.in  { color: var(--green-dark); }
+.card-stock.low { color: var(--warn); }
+.card-stock.out { color: var(--danger); }
+.qty-out {
+  margin-top: 12px; text-align: center; padding: 9px; border-radius: 9px;
+  background: #fdeaea; color: var(--danger); font-weight: 700; font-size: .9rem;
+}
+
+/* ---- online payment button (invoice) ---- */
+.btn.pay {
+  background: #0a2540; border-color: #0a2540; color: #fff; font-size: 1rem; padding: 13px 14px;
+}
+.btn.pay:hover { background: #0d2f52; }
+.pay-trust { text-align: center; color: var(--muted); font-size: .78rem; margin: 8px 0 14px; }
+.pay-trust strong { color: var(--ink); }
+
+/* ---- inventory summary ---- */
+.inv-summary { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 16px; }
+.inv-stat {
+  flex: 1; min-width: 110px; background: var(--card); border: 1px solid var(--line);
+  border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow);
+  font-size: .8rem; color: var(--muted); font-weight: 600;
+}
+.inv-stat .inv-num { display: block; font-size: 1.5rem; font-weight: 800; color: var(--ink); }
+.inv-stat.warn { border-color: #f3d9a8; background: #fef8ee; }
+.inv-stat.warn .inv-num { color: var(--warn); }
+.inv-stat.danger { border-color: #f3c6c6; background: #fdf0f0; }
+.inv-stat.danger .inv-num { color: var(--danger); }
+
 /* ---- footer ---- */
 .foot { text-align: center; color: var(--muted); font-size: .82rem; padding: 24px; }
 
