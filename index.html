@@ -74,22 +74,38 @@
         </form>
 
         <form id="signupForm" hidden>
-          <label>Shop / business name
-            <input type="text" id="signupShop" required />
+          <p class="muted small">Apply to become a reseller. All fields marked * are required.</p>
+          <label>👤 Name *
+            <input type="text" id="signupName" required autocomplete="name" />
           </label>
-          <label>Your name
-            <input type="text" id="signupName" required />
-          </label>
-          <label>Phone (WhatsApp)
-            <input type="tel" id="signupPhone" />
-          </label>
-          <label>Email
+          <label>✉️ Email *
             <input type="email" id="signupEmail" required autocomplete="email" />
           </label>
-          <label>Password
+          <label>🏢 Company name *
+            <input type="text" id="signupShop" required autocomplete="organization" />
+          </label>
+          <label>📍 Company address *
+            <textarea id="signupAddress" rows="2" required autocomplete="street-address"></textarea>
+          </label>
+          <label>💳 Payable contact details *
+            <input type="text" id="signupPayable" required placeholder="Accounts payable name / email" />
+          </label>
+          <label>🏦 Bank details (optional)
+            <input type="text" id="signupBank" placeholder="For ACH / wire payments" />
+          </label>
+          <label>📞 Phone *
+            <input type="tel" id="signupPhone" required autocomplete="tel" />
+          </label>
+          <label>📄 Upload resale certificate *
+            <input type="file" id="signupResaleCert" required accept="image/*,application/pdf" />
+          </label>
+          <label>🪪 Upload state issued ID *
+            <input type="file" id="signupStateId" required accept="image/*,application/pdf" />
+          </label>
+          <label>🔒 Password *
             <input type="password" id="signupPassword" required minlength="6" autocomplete="new-password" />
           </label>
-          <button class="btn primary block" id="signupBtn" type="submit">Create account</button>
+          <button class="btn primary block" id="signupBtn" type="submit">Submit application</button>
         </form>
 
         <p class="msg" id="authMsg"></p>
@@ -133,6 +149,8 @@
         </div>
         <input type="search" id="search" placeholder="Search products…" />
       </div>
+
+      <div id="catBar" class="cat-bar"></div>
 
       <div id="catalog" class="catalog"></div>
     </section>

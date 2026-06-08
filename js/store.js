@@ -88,6 +88,20 @@
     return data.publicUrl;
   }
 
+  // Upload a reseller application document (resale cert / state ID) to the
+  // PRIVATE "reseller-docs" bucket and return its storage path. Called during
+  // signup, before any session exists, using the anon key.
+  async function uploadResellerDoc(file, baseName) {
+    if (!file) return null;
+    const ext = (file.name.split(".").pop() || "bin").toLowerCase();
+    const path = (baseName || "doc") + "_" + Date.now() + "_" +
+      Math.random().toString(36).slice(2, 8) + "." + ext;
+    const { error } = await sb.storage.from("reseller-docs")
+      .upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
+    if (error) throw error;
+    return path;
+  }
+
   function escapeHtml(s) {
     return String(s == null ? "" : s)
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -97,6 +111,6 @@
   window.Store = {
     cfg, sb, configured,
     money, invoiceNo, fmtDate,
-    buildInvoiceText, whatsappLink, escapeHtml, uploadProductImage
+    buildInvoiceText, whatsappLink, escapeHtml, uploadProductImage, uploadResellerDoc
   };
 })();

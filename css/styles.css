@@ -109,6 +109,24 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--green); out
 }
 .pill.ok { background: #eaf6ef; color: var(--green-dark); }
 .pill.warn { background: #fef3e2; color: var(--warn); }
+/* ---- shop-by-category chip bar ---- */
+.cat-bar {
+  display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 12px;
+  margin-bottom: 8px; -webkit-overflow-scrolling: touch; scrollbar-width: thin;
+}
+.cat-chip {
+  display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  padding: 8px 14px; border-radius: 999px; font-size: .9rem; font-weight: 600;
+  cursor: pointer; white-space: nowrap; transition: .15s;
+}
+.cat-chip:hover { border-color: #cfd4d8; background: #f0f4f2; }
+.cat-chip.active {
+  background: var(--green); border-color: var(--green); color: #fff;
+}
+.cat-chip.active:hover { background: var(--green-dark); }
+.cat-chip-icon { font-size: 1.05rem; line-height: 1; }
+
 .cat-title { margin: 22px 0 10px; font-size: 1.05rem; color: var(--green-dark); border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
 .card {

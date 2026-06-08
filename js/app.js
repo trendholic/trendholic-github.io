@@ -11,6 +11,20 @@
   let products = [];
   let cart = {};               // { productId: qty }
   let recovering = false;      // true while resetting password via email link
+  let activeCategory = "All";  // selected shop-by-category chip
+
+  // Shop-by-category chips. `label` is the matching token ("All" = no filter).
+  const CATEGORIES = [
+    { icon: "🛒", label: "All" },
+    { icon: "🥜", label: "NUTS" },
+    { icon: "🌶️", label: "SPICES" },
+    { icon: "🍚", label: "RICE" },
+    { icon: "🍪", label: "SNACK" },
+    { icon: "🫘", label: "DALS & BEANS" },
+    { icon: "🥤", label: "DRINKS" },
+    { icon: "🧊", label: "FROZEN" },
+    { icon: "🌾", label: "FLOUR" }
+  ];
 
   // ---------------------------------------------------------------
   //  Boot
@@ -81,21 +95,44 @@
     $("signupForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       setAuthMsg("");
-      const btn = $("signupBtn"); btn.disabled = true; btn.textContent = "Creating…";
+      const btn = $("signupBtn"); btn.disabled = true; btn.textContent = "Uploading documents…";
+
+      const resaleFile = $("signupResaleCert").files[0];
+      const stateIdFile = $("signupStateId").files[0];
+
+      // 1. Upload both documents to the private bucket FIRST, before any
+      //    session exists (storage policies allow anon insert into this bucket).
+      let resaleCertPath, stateIdPath;
+      try {
+        resaleCertPath = await S.uploadResellerDoc(resaleFile, "resale_cert");
+        stateIdPath = await S.uploadResellerDoc(stateIdFile, "state_id");
+      } catch (err) {
+        btn.disabled = false; btn.textContent = "Submit application";
+        setAuthMsg("Could not upload your documents: " + (err.message || err), true);
+        return;
+      }
+
+      // 2. Create the account, passing the application details as metadata.
+      btn.textContent = "Submitting…";
       const { error } = await S.sb.auth.signUp({
         email: $("signupEmail").value.trim(),
         password: $("signupPassword").value,
         options: {
           data: {
-            shop_name: $("signupShop").value.trim(),
             contact_name: $("signupName").value.trim(),
-            phone: $("signupPhone").value.trim()
+            shop_name: $("signupShop").value.trim(),
+            company_address: $("signupAddress").value.trim(),
+            payable_contact: $("signupPayable").value.trim(),
+            bank_details: $("signupBank").value.trim(),
+            phone: $("signupPhone").value.trim(),
+            resale_cert_path: resaleCertPath,
+            state_id_path: stateIdPath
           }
         }
       });
-      btn.disabled = false; btn.textContent = "Create account";
+      btn.disabled = false; btn.textContent = "Submit application";
       if (error) { setAuthMsg(error.message, true); return; }
-      setAuthMsg("Account created! If email confirmation is on, check your inbox. " +
+      setAuthMsg("Application submitted! If email confirmation is on, check your inbox. " +
                  "Your account must be approved by the store before you can see prices.", false);
       switchAuthTab("login");
     });
@@ -199,8 +236,45 @@
       .order("sort", { ascending: true })
       .order("name", { ascending: true });
     products = error ? [] : (data || []);
+    renderCatBar();
     renderCatalog();
     renderCart();
+  }
+
+  // ---------------------------------------------------------------
+  //  Category chip bar
+  // ---------------------------------------------------------------
+  function renderCatBar() {
+    const bar = $("catBar");
+    if (!bar) return;
+    bar.innerHTML = "";
+    CATEGORIES.forEach((c) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "cat-chip" + (c.label === activeCategory ? " active" : "");
+      chip.innerHTML = `<span class="cat-chip-icon">${c.icon}</span>${S.escapeHtml(c.label)}`;
+      chip.addEventListener("click", () => {
+        activeCategory = c.label;
+        renderCatBar();
+        renderCatalog();
+      });
+      bar.appendChild(chip);
+    });
+  }
+
+  // Split a category string into lowercase word tokens (drops "&", spaces, etc).
+  function catTokens(s) {
+    return String(s || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  }
+
+  // A product matches the active category if any of its category tokens overlap
+  // the chip's tokens — so "RICE" matches a "Rice" product, "DALS & BEANS"
+  // matches "Dals" or "Beans", etc.
+  function matchesCategory(p) {
+    if (activeCategory === "All") return true;
+    const want = catTokens(activeCategory);
+    const have = catTokens(p.category);
+    return have.some((t) => want.includes(t));
   }
 
   function renderShopHeader() {
@@ -217,7 +291,8 @@
     wrap.innerHTML = "";
 
     const filtered = products.filter((p) =>
-      !q || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
+      matchesCategory(p) &&
+      (!q || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)));
 
     if (filtered.length === 0) {
       wrap.innerHTML = '<p class="muted">No products found.</p>';

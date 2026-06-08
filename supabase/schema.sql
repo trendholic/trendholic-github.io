@@ -8,15 +8,26 @@
 -- 1. PROFILES  (one row per customer / staff account)
 -- ---------------------------------------------------------------------
 create table if not exists public.profiles (
-  id           uuid primary key references auth.users(id) on delete cascade,
-  shop_name    text,
-  contact_name text,
-  phone        text,
+  id              uuid primary key references auth.users(id) on delete cascade,
+  shop_name       text,                            -- company / business name
+  contact_name    text,
+  phone           text,
+  company_address text,                            -- full reseller application fields ↓
+  payable_contact text,
+  bank_details    text,
+  resale_cert_path text,                           -- path in private "reseller-docs" bucket
+  state_id_path   text,                            -- path in private "reseller-docs" bucket
   discount_pct numeric  not null default 0  check (discount_pct >= 0 and discount_pct <= 100),
   approved     boolean  not null default false,   -- must be TRUE to see prices / order
   is_admin     boolean  not null default false,   -- store owner / staff
   created_at   timestamptz not null default now()
 );
+-- if you already created the profiles table before, add the new columns:
+alter table public.profiles add column if not exists company_address  text;
+alter table public.profiles add column if not exists payable_contact  text;
+alter table public.profiles add column if not exists bank_details     text;
+alter table public.profiles add column if not exists resale_cert_path text;
+alter table public.profiles add column if not exists state_id_path    text;
 
 -- ---------------------------------------------------------------------
 -- 2. PRODUCTS  (the wholesale catalog with prices)
@@ -77,12 +88,21 @@ create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer
 set search_path = public as $$
 begin
-  insert into public.profiles (id, shop_name, contact_name, phone)
+  insert into public.profiles (
+    id, shop_name, contact_name, phone,
+    company_address, payable_contact, bank_details,
+    resale_cert_path, state_id_path
+  )
   values (
     new.id,
     new.raw_user_meta_data->>'shop_name',
     new.raw_user_meta_data->>'contact_name',
-    new.raw_user_meta_data->>'phone'
+    new.raw_user_meta_data->>'phone',
+    new.raw_user_meta_data->>'company_address',
+    new.raw_user_meta_data->>'payable_contact',
+    new.raw_user_meta_data->>'bank_details',
+    new.raw_user_meta_data->>'resale_cert_path',
+    new.raw_user_meta_data->>'state_id_path'
   )
   on conflict (id) do nothing;
   return new;
@@ -223,6 +243,33 @@ create policy product_images_update on storage.objects
   for update using (bucket_id = 'product-images' and public.is_admin());
 create policy product_images_delete on storage.objects
   for delete using (bucket_id = 'product-images' and public.is_admin());
+
+-- =====================================================================
+--  RESELLER DOCUMENT STORAGE  (PRIVATE)
+--  Holds resale certificates and state IDs uploaded during the reseller
+--  application. The bucket is PRIVATE: applicants upload with the anon key
+--  during signup (before any session exists), but only admins can read or
+--  manage the files, keeping sensitive documents confidential.
+-- =====================================================================
+insert into storage.buckets (id, name, public)
+values ('reseller-docs', 'reseller-docs', false)
+on conflict (id) do nothing;
+
+drop policy if exists reseller_docs_insert on storage.objects;
+drop policy if exists reseller_docs_read   on storage.objects;
+drop policy if exists reseller_docs_update on storage.objects;
+drop policy if exists reseller_docs_delete on storage.objects;
+
+-- Anyone (incl. anon, pre-signup) may upload an application document.
+create policy reseller_docs_insert on storage.objects
+  for insert with check (bucket_id = 'reseller-docs');
+-- Only admins may view / manage the uploaded documents.
+create policy reseller_docs_read on storage.objects
+  for select using (bucket_id = 'reseller-docs' and public.is_admin());
+create policy reseller_docs_update on storage.objects
+  for update using (bucket_id = 'reseller-docs' and public.is_admin());
+create policy reseller_docs_delete on storage.objects
+  for delete using (bucket_id = 'reseller-docs' and public.is_admin());
 
 -- =====================================================================
 --  SAMPLE PRODUCTS  (edit / delete these from the Admin page later)
