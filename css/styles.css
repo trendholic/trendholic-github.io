@@ -262,6 +262,12 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--green); out
   padding: 12px 14px; margin-bottom: 14px; box-shadow: var(--shadow);
 }
 
+/* ---- P&L date range ---- */
+.pl-range { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: 4px 0 14px; }
+.pl-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+.pl-presets .btn.active { background: var(--green); border-color: var(--green); color: #fff; }
+.pl-range input[type=date] { width: auto; margin: 0; }
+
 /* ---- inventory summary ---- */
 .inv-summary { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 16px; }
 .inv-stat {

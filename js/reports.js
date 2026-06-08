@@ -77,10 +77,16 @@
 
     // Build chronological transactions (orders = debit, payments = credit).
     const tx = [];
+    const invMap = {};
+    (orders || []).forEach((o) => { invMap[o.id] = invNo(o); });
     (orders || []).filter((o) => o.status !== "cancelled").forEach((o) =>
       tx.push({ date: o.created_at, desc: "Order " + invNo(o), debit: Number(o.total || 0), credit: 0 }));
     (payments || []).forEach((p) =>
-      tx.push({ date: p.created_at, desc: "Payment" + (p.method ? " (" + p.method + ")" : "") + (p.note ? " — " + p.note : ""), debit: 0, credit: Number(p.amount || 0) }));
+      tx.push({ date: p.created_at,
+        desc: "Payment" + (p.method ? " (" + p.method + ")" : "") +
+              (p.order_id && invMap[p.order_id] ? " for " + invMap[p.order_id] : "") +
+              (p.note ? " — " + p.note : ""),
+        debit: 0, credit: Number(p.amount || 0) }));
     tx.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     let bal = 0, totD = 0, totC = 0;
@@ -146,7 +152,7 @@
   function plPDF(stats, cfg) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: "mm", format: "a4" });
-    let y = bandHeader(doc, cfg, "Profit & Loss", fmtDate(new Date()));
+    let y = bandHeader(doc, cfg, "Profit & Loss", "Period: " + (stats.rangeLabel || "All time"));
 
     const cards = [
       ["Net revenue", money(cfg, stats.revenue), GREEN],

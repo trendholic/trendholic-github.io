@@ -118,6 +118,17 @@
           <button class="btn primary" id="exportPlBtn" type="button">⬇️ Export P&amp;L (PDF)</button>
         </div>
         <h3 class="cat-title">Profit &amp; Loss</h3>
+        <div class="pl-range">
+          <div class="pl-presets">
+            <button class="btn small ghost" data-range="month" type="button">This month</button>
+            <button class="btn small ghost" data-range="lastmonth" type="button">Last month</button>
+            <button class="btn small ghost" data-range="year" type="button">This year</button>
+            <button class="btn small ghost active" data-range="all" type="button">All time</button>
+          </div>
+          <label class="inline">From <input type="date" id="plFrom" /></label>
+          <label class="inline">To <input type="date" id="plTo" /></label>
+          <span class="muted small" id="plRangeLabel"></span>
+        </div>
         <div id="plSummary" class="inv-summary"></div>
         <div id="plMonthly" class="admin-list"></div>
 

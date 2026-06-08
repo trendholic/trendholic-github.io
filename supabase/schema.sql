@@ -284,6 +284,7 @@ create policy orders_admin_update on public.orders
 create table if not exists public.payments (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references auth.users(id) on delete cascade,  -- the client
+  order_id    uuid references public.orders(id) on delete set null,        -- optional: a specific invoice
   amount      numeric not null check (amount > 0),
   method      text,                                  -- cash | bank | card | other
   note        text,
@@ -291,6 +292,9 @@ create table if not exists public.payments (
   created_at  timestamptz not null default now()
 );
 create index if not exists payments_user_idx on public.payments(user_id);
+create index if not exists payments_order_idx on public.payments(order_id);
+-- if you already created the payments table before, add the link column:
+alter table public.payments add column if not exists order_id uuid references public.orders(id) on delete set null;
 
 alter table public.payments enable row level security;
 

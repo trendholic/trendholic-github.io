@@ -46,6 +46,7 @@
     // finance / payments
     $("payCancel").addEventListener("click", closePaymentModal);
     $("paymentForm").addEventListener("submit", savePayment);
+    setupFinanceRange();
     $("exportPlBtn").addEventListener("click", () => {
       if (financeData) window.Reports.plPDF(financeData.pl, cfg);
       else alert("Open the Finance tab first.");
@@ -422,12 +423,19 @@
 
   // ---------------- Orders ----------------
   async function loadOrders() {
-    const { data, error } = await S.sb.from("orders")
-      .select("*, profiles(shop_name, contact_name, phone)")
-      .order("created_at", { ascending: false }).limit(100);
     const wrap = $("ordersList");
-    if (error) { wrap.innerHTML = '<p class="msg error">' + S.escapeHtml(error.message) + "</p>"; return; }
+    const [oRes, pRes] = await Promise.all([
+      S.sb.from("orders").select("*, profiles(shop_name, contact_name, phone)")
+        .order("created_at", { ascending: false }).limit(100),
+      S.sb.from("payments").select("order_id, amount"),
+    ]);
+    if (oRes.error) { wrap.innerHTML = '<p class="msg error">' + S.escapeHtml(oRes.error.message) + "</p>"; return; }
+    const data = oRes.data || [];
     if (!data.length) { wrap.innerHTML = '<p class="muted">No orders yet.</p>'; return; }
+
+    // sum payments allocated to each invoice
+    const paidByOrder = {};
+    (pRes.data || []).forEach((p) => { if (p.order_id) paidByOrder[p.order_id] = (paidByOrder[p.order_id] || 0) + Number(p.amount || 0); });
 
     wrap.innerHTML = "";
     data.forEach((o) => {
@@ -440,26 +448,36 @@
              <td class="num">${S.money(it.price)}</td>
              <td class="num">${S.money(it.qty * it.price)}</td></tr>`).join("");
 
-      const paid = o.payment_status === "paid";
+      const total = Number(o.total || 0);
+      const allocated = paidByOrder[o.id] || 0;
+      // Fall back to the manual flag when no per-invoice payments are recorded.
+      const paidAmt = allocated > 0 ? allocated : (o.payment_status === "paid" ? total : 0);
+      const balance = Math.max(0, total - paidAmt);
+      const payState = paidAmt >= total - 0.001 && total > 0 ? "paid" : paidAmt > 0 ? "partial" : "unpaid";
+      const payPill = { paid: "ok", partial: "warn", unpaid: "warn" }[payState];
+      const payLine = payState === "partial"
+        ? "paid " + S.money(paidAmt) + " of " + S.money(total) + " · balance " + S.money(balance)
+        : payState === "paid" ? "paid in full" + (o.paid_at ? " · " + S.fmtDate(o.paid_at) : "") : "unpaid";
+
       card.innerHTML = `
         <div class="order-head">
           <div>
             <strong>${S.invoiceNo(o.order_no, o.created_at)}</strong>
             <span class="pill status-${S.escapeHtml(o.status)}">${S.escapeHtml(o.status)}</span>
-            <span class="pill ${paid ? "ok" : "warn"}">${paid ? "paid" : "unpaid"}</span>
+            <span class="pill ${payPill}">${payState}</span>
           </div>
           <div class="muted small">${S.fmtDate(o.created_at)}</div>
         </div>
-        <div class="muted small">${S.escapeHtml(prof.shop_name || "")}${prof.phone ? " · " + S.escapeHtml(prof.phone) : ""}${paid && o.paid_at ? " · paid " + S.fmtDate(o.paid_at) : ""}</div>
+        <div class="muted small">${S.escapeHtml(prof.shop_name || "")}${prof.phone ? " · " + S.escapeHtml(prof.phone) : ""} · ${payLine}</div>
         <table class="invoice-table"><tbody>${itemsHtml}</tbody></table>
         <div class="order-foot">
-          <strong>Total ${S.money(o.total)}</strong>
+          <strong>Total ${S.money(total)}</strong>
           <div class="order-actions">
             <select class="status">
               ${["new","confirmed","fulfilled","cancelled"].map((s) =>
                 `<option value="${s}" ${s===o.status?"selected":""}>${s}</option>`).join("")}
             </select>
-            <button class="btn small ${paid ? "ghost" : "primary"}" data-act="pay">${paid ? "Mark unpaid" : "Mark paid"}</button>
+            ${balance > 0 ? '<button class="btn small primary" data-act="pay">Record payment</button>' : '<span class="pill ok">✓ settled</span>'}
             <a class="btn small whatsapp" target="_blank">Reply on WhatsApp</a>
           </div>
         </div>`;
@@ -468,12 +486,11 @@
         const { error } = await S.sb.from("orders").update({ status: e.target.value }).eq("id", o.id);
         if (error) alert(error.message); else loadOrders();
       });
-      card.querySelector('[data-act="pay"]').addEventListener("click", async (e) => {
-        e.target.disabled = true;
-        const { error } = await S.sb.from("orders")
-          .update({ payment_status: paid ? "unpaid" : "paid" }).eq("id", o.id);
-        if (error) { alert(error.message); e.target.disabled = false; } else { loadOrders(); refreshBadges(); }
-      });
+      const payBtn = card.querySelector('[data-act="pay"]');
+      if (payBtn) payBtn.addEventListener("click", () => openPaymentModal(
+        { id: o.user_id, shop_name: prof.shop_name, contact_name: prof.contact_name },
+        { id: o.id, order_no: o.order_no, created_at: o.created_at, total, _paid: paidAmt },
+        loadOrders));
       const wa = card.querySelector("a.whatsapp");
       wa.href = S.whatsappLink(S.buildInvoiceText(o, prof), prof.phone || "");
       if (!prof.phone) { wa.classList.add("disabled"); wa.removeAttribute("href"); wa.title = "No customer phone on file"; }
@@ -483,8 +500,10 @@
   }
 
   // ---------------- Finance: profit/loss + client ledgers ----------------
-  let financeData = null;
-  let payClient = null;
+  let financeData = null;     // computed view for the current date range
+  let financeRaw = null;      // all fetched orders/clients/payments
+  const financeRange = { from: null, to: null };  // epoch ms bounds (null = open)
+  let payClient = null, payOrder = null, payReload = null;
 
   function statCard(num, label, cls) {
     return '<div class="inv-stat ' + (cls || "") + '"><span class="inv-num">' +
@@ -492,9 +511,8 @@
   }
 
   async function loadFinance() {
-    const wrapPL = $("plSummary"), wrapMonthly = $("plMonthly"), wrapLedger = $("ledgerList");
-    wrapPL.innerHTML = '<p class="muted">Loading…</p>'; wrapMonthly.innerHTML = ""; wrapLedger.innerHTML = "";
-
+    const wrapPL = $("plSummary");
+    wrapPL.innerHTML = '<p class="muted">Loading…</p>'; $("plMonthly").innerHTML = ""; $("ledgerList").innerHTML = "";
     const [oRes, cRes, pRes] = await Promise.all([
       S.sb.from("orders").select("*").order("created_at", { ascending: true }),
       S.sb.from("profiles").select("*").order("shop_name"),
@@ -502,8 +520,31 @@
     ]);
     const err = oRes.error || cRes.error || pRes.error;
     if (err) { wrapPL.innerHTML = '<p class="msg error">' + S.escapeHtml(err.message) + "</p>"; return; }
+    financeRaw = {
+      orders: (oRes.data || []).filter((o) => o.status !== "cancelled"),
+      clients: cRes.data || [],
+      payments: pRes.data || [],
+    };
+    renderFinance();
+  }
 
-    const live = (oRes.data || []).filter((o) => o.status !== "cancelled");
+  function inRange(o) {
+    const t = new Date(o.created_at).getTime();
+    if (financeRange.from != null && t < financeRange.from) return false;
+    if (financeRange.to != null && t > financeRange.to) return false;
+    return true;
+  }
+
+  function rangeLabel() {
+    if (financeRange.from == null && financeRange.to == null) return "All time";
+    const d = (ms) => new Date(ms).toLocaleDateString();
+    return (financeRange.from != null ? d(financeRange.from) : "start") + " – " +
+           (financeRange.to != null ? d(financeRange.to) : "now");
+  }
+
+  function renderFinance() {
+    if (!financeRaw) return;
+    const live = financeRaw.orders.filter(inRange);
     const netOf = (o) => Number(o.subtotal || 0) - Number(o.discount_amount || 0);
     const revenue = live.reduce((s, o) => s + netOf(o), 0);
     const cogs = live.reduce((s, o) => s + Number(o.cost_total || 0), 0);
@@ -519,18 +560,49 @@
     });
     const byMonth = Object.values(mMap).sort((a, b) => b.month.localeCompare(a.month));
 
-    financeData = { orders: live, clients: cRes.data || [], payments: pRes.data || [],
-      pl: { revenue, cogs, profit, margin, orders: live.length, byMonth } };
+    financeData = { orders: financeRaw.orders, clients: financeRaw.clients, payments: financeRaw.payments,
+      pl: { revenue, cogs, profit, margin, orders: live.length, byMonth, rangeLabel: rangeLabel() } };
 
-    wrapPL.innerHTML =
+    $("plSummary").innerHTML =
       statCard(S.money(revenue), "Net revenue") +
       statCard(S.money(cogs), "Cost (COGS)") +
       statCard(S.money(profit), "Gross profit", profit < 0 ? "danger" : "") +
       statCard(margin.toFixed(1) + "%", "Margin") +
       statCard(live.length, "Orders");
-
+    $("plRangeLabel").textContent = rangeLabel();
     renderMonthly(byMonth);
     renderLedgerList(financeData);
+  }
+
+  function fmtDateInput(d) {
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function clearPresetActive() {
+    document.querySelectorAll(".pl-presets [data-range]").forEach((b) => b.classList.remove("active"));
+  }
+  function applyPreset(kind, btn) {
+    clearPresetActive(); if (btn) btn.classList.add("active");
+    const n = new Date(); let from = null, to = null;
+    if (kind === "month") { from = new Date(n.getFullYear(), n.getMonth(), 1); to = new Date(n.getFullYear(), n.getMonth() + 1, 0, 23, 59, 59); }
+    else if (kind === "lastmonth") { from = new Date(n.getFullYear(), n.getMonth() - 1, 1); to = new Date(n.getFullYear(), n.getMonth(), 0, 23, 59, 59); }
+    else if (kind === "year") { from = new Date(n.getFullYear(), 0, 1); to = new Date(n.getFullYear(), 11, 31, 23, 59, 59); }
+    financeRange.from = from ? from.getTime() : null;
+    financeRange.to = to ? to.getTime() : null;
+    $("plFrom").value = from ? fmtDateInput(from) : "";
+    $("plTo").value = to ? fmtDateInput(to) : "";
+    renderFinance();
+  }
+  function setupFinanceRange() {
+    document.querySelectorAll(".pl-presets [data-range]").forEach((b) =>
+      b.addEventListener("click", () => applyPreset(b.dataset.range, b)));
+    $("plFrom").addEventListener("change", () => {
+      financeRange.from = $("plFrom").value ? new Date($("plFrom").value + "T00:00:00").getTime() : null;
+      clearPresetActive(); renderFinance();
+    });
+    $("plTo").addEventListener("change", () => {
+      financeRange.to = $("plTo").value ? new Date($("plTo").value + "T23:59:59").getTime() : null;
+      clearPresetActive(); renderFinance();
+    });
   }
 
   function renderMonthly(rows) {
@@ -577,21 +649,32 @@
         '<div class="admin-row-actions">' +
         '<button class="btn small primary" data-act="pay">Record payment</button>' +
         '<button class="btn small ghost" data-act="ledger">Ledger PDF</button></div>';
-      el.querySelector('[data-act="pay"]').addEventListener("click", () => openPaymentModal(c));
+      el.querySelector('[data-act="pay"]').addEventListener("click", () => openPaymentModal(c, null, loadFinance));
       el.querySelector('[data-act="ledger"]').addEventListener("click", () => window.Reports.ledgerPDF(c, os, ps, cfg));
       w.appendChild(el);
     });
   }
 
-  function openPaymentModal(c) {
-    payClient = c;
-    $("payModalClient").textContent = c.shop_name || c.contact_name || "Client";
-    $("payAmount").value = ""; $("payNote").value = ""; $("payMethod").value = "cash";
+  // c = client {id, shop_name, contact_name}. order = optional {id, order_no, created_at, total, _paid}.
+  function openPaymentModal(c, order, reload) {
+    payClient = c; payOrder = order || null; payReload = reload || loadFinance;
+    const name = c.shop_name || c.contact_name || "Client";
+    if (order) {
+      const bal = Math.max(0, Number(order.total || 0) - Number(order._paid || 0));
+      $("payModalTitle").textContent = "Payment for " + S.invoiceNo(order.order_no, order.created_at);
+      $("payModalClient").textContent = name + " · balance " + S.money(bal);
+      $("payAmount").value = bal ? bal.toFixed(2) : "";
+    } else {
+      $("payModalTitle").textContent = "Record payment";
+      $("payModalClient").textContent = name;
+      $("payAmount").value = "";
+    }
+    $("payNote").value = ""; $("payMethod").value = "cash";
     $("payMsg").textContent = ""; $("payMsg").className = "msg";
     $("paymentModal").hidden = false;
     $("payAmount").focus();
   }
-  function closePaymentModal() { $("paymentModal").hidden = true; payClient = null; }
+  function closePaymentModal() { $("paymentModal").hidden = true; payClient = null; payOrder = null; payReload = null; }
 
   async function savePayment(e) {
     e.preventDefault();
@@ -600,13 +683,24 @@
     const msg = $("payMsg");
     if (amount <= 0) { msg.textContent = "Enter a valid amount."; msg.className = "msg error"; return; }
     const btn = $("paySave"); btn.disabled = true; btn.textContent = "Saving…";
-    const { error } = await S.sb.from("payments").insert({
-      user_id: payClient.id, amount,
-      method: $("payMethod").value, note: $("payNote").value.trim() || null, created_by: me.id,
-    });
+
+    const row = { user_id: payClient.id, amount, method: $("payMethod").value,
+      note: $("payNote").value.trim() || null, created_by: me.id };
+    if (payOrder) row.order_id = payOrder.id;
+    const { error } = await S.sb.from("payments").insert(row);
+
+    // When a payment is allocated to an invoice, update that order's status.
+    if (!error && payOrder) {
+      const newPaid = Number(payOrder._paid || 0) + amount;
+      const status = newPaid >= Number(payOrder.total || 0) - 0.001 ? "paid" : "partial";
+      await S.sb.from("orders").update({ payment_status: status }).eq("id", payOrder.id);
+    }
+
     btn.disabled = false; btn.textContent = "Save payment";
     if (error) { msg.textContent = error.message; msg.className = "msg error"; return; }
+    const reload = payReload;
     closePaymentModal();
-    loadFinance();
+    if (reload) reload();
+    refreshBadges();
   }
 })();
