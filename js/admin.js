@@ -31,6 +31,7 @@
       b.addEventListener("click", () => selectTab(b.dataset.tab)));
 
     $("addProductForm").addEventListener("submit", addProduct);
+    $("exportCatalogueBtn").addEventListener("click", exportCatalogue);
 
     S.sb.auth.onAuthStateChange((_e, session) => session ? gate() : show("auth"));
     const { data } = await S.sb.auth.getSession();
@@ -117,6 +118,24 @@
       });
       wrap.appendChild(row);
     });
+  }
+
+  // ---------------- Catalogue PDF export ----------------
+  async function exportCatalogue() {
+    const btn = $("exportCatalogueBtn");
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = "Building PDF…";
+    try {
+      const { data, error } = await S.sb.from("products")
+        .select("*").order("category").order("sort").order("name");
+      if (error) throw error;
+      if (!data || !data.length) { alert("No products to export yet."); return; }
+      await window.Catalogue.export(data, cfg);
+    } catch (err) {
+      alert("Could not build the catalogue: " + (err.message || err));
+    } finally {
+      btn.disabled = false; btn.textContent = label;
+    }
   }
 
   // ---------------- Products ----------------

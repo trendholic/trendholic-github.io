@@ -70,6 +70,10 @@
 
       <!-- products -->
       <div data-panel="products" hidden>
+        <div class="panel-toolbar">
+          <p class="muted small" style="margin:0">Export every product — grouped by category, with images &amp; live stock — as a PDF catalogue.</p>
+          <button class="btn primary" id="exportCatalogueBtn" type="button">⬇️ Export catalogue (PDF)</button>
+        </div>
         <form id="addProductForm" class="add-form panel">
           <h3>Add product</h3>
           <div class="form-grid">
@@ -103,8 +107,10 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/catalogue.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>
