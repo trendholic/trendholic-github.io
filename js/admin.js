@@ -43,6 +43,14 @@
       if (isNew) $("pCategoryNew").focus();
     });
 
+    // finance / payments
+    $("payCancel").addEventListener("click", closePaymentModal);
+    $("paymentForm").addEventListener("submit", savePayment);
+    $("exportPlBtn").addEventListener("click", () => {
+      if (financeData) window.Reports.plPDF(financeData.pl, cfg);
+      else alert("Open the Finance tab first.");
+    });
+
     setupIdleLogout();
 
     S.sb.auth.onAuthStateChange((_e, session) => session ? gate() : show("auth"));
@@ -147,6 +155,7 @@
     if (tab === "products") loadProducts();
     if (tab === "inventory") loadInventory();
     if (tab === "orders") loadOrders();
+    if (tab === "finance") loadFinance();
   }
 
   // ---------------- Customers ----------------
@@ -239,6 +248,7 @@
         category,
         unit: $("pUnit").value.trim() || "unit",
         price: parseFloat($("pPrice").value) || 0,
+        cost: parseFloat($("pCost").value) || 0,
         moq: parseInt($("pMoq").value, 10) || 1,
         stock: stockRaw === "" ? null : Math.max(0, parseInt(stockRaw, 10) || 0),
         sort: parseInt($("pSort").value, 10) || 0
@@ -281,6 +291,7 @@
             ${S.escapeHtml(p.name)}
             ${p.active ? "" : '<span class="pill warn">hidden</span>'}
             ${stockBadge(p)}
+            ${marginBadge(p)}
           </div>
           <div class="muted small">${S.escapeHtml(p.unit)} · MOQ ${p.moq}</div>
         </div>
@@ -288,8 +299,11 @@
           <label class="inline">Category
             <select class="cat" style="width:auto">${categoryOptions(p.category)}</select>
           </label>
-          <label class="inline">${cfg.CURRENCY}
-            <input type="number" min="0" step="0.01" value="${p.price}" class="price" style="width:100px" />
+          <label class="inline">Cost ${cfg.CURRENCY}
+            <input type="number" min="0" step="0.01" value="${p.cost || 0}" class="cost" style="width:80px" />
+          </label>
+          <label class="inline">Sell ${cfg.CURRENCY}
+            <input type="number" min="0" step="0.01" value="${p.price}" class="price" style="width:80px" />
           </label>
           <button class="btn small ghost" data-act="toggle">${p.active ? "Hide" : "Show"}</button>
           <button class="btn small" data-act="del">Delete</button>
@@ -297,6 +311,11 @@
 
       row.querySelector(".cat").addEventListener("change", async (e) => {
         const { error } = await S.sb.from("products").update({ category: e.target.value }).eq("id", p.id);
+        if (error) alert(error.message); else loadProducts();
+      });
+      row.querySelector(".cost").addEventListener("change", async (e) => {
+        const cost = parseFloat(e.target.value) || 0;
+        const { error } = await S.sb.from("products").update({ cost }).eq("id", p.id);
         if (error) alert(error.message); else loadProducts();
       });
 
@@ -337,6 +356,13 @@
     if (p.stock <= 0) return '<span class="pill warn">out of stock</span>';
     if (p.stock <= lowStock()) return '<span class="pill warn">low · ' + p.stock + ' left</span>';
     return '<span class="pill ok">' + p.stock + ' in stock</span>';
+  }
+
+  function marginBadge(p) {
+    const price = Number(p.price || 0), cost = Number(p.cost || 0);
+    if (!cost) return '<span class="pill">set cost</span>';
+    const m = price > 0 ? (price - cost) / price * 100 : 0;
+    return '<span class="pill ' + (m <= 0 ? "warn" : "ok") + '">' + m.toFixed(0) + "% margin</span>";
   }
 
   async function setStock(id, value) {
@@ -454,5 +480,133 @@
 
       wrap.appendChild(card);
     });
+  }
+
+  // ---------------- Finance: profit/loss + client ledgers ----------------
+  let financeData = null;
+  let payClient = null;
+
+  function statCard(num, label, cls) {
+    return '<div class="inv-stat ' + (cls || "") + '"><span class="inv-num">' +
+      S.escapeHtml(String(num)) + "</span>" + label + "</div>";
+  }
+
+  async function loadFinance() {
+    const wrapPL = $("plSummary"), wrapMonthly = $("plMonthly"), wrapLedger = $("ledgerList");
+    wrapPL.innerHTML = '<p class="muted">Loading…</p>'; wrapMonthly.innerHTML = ""; wrapLedger.innerHTML = "";
+
+    const [oRes, cRes, pRes] = await Promise.all([
+      S.sb.from("orders").select("*").order("created_at", { ascending: true }),
+      S.sb.from("profiles").select("*").order("shop_name"),
+      S.sb.from("payments").select("*").order("created_at", { ascending: true }),
+    ]);
+    const err = oRes.error || cRes.error || pRes.error;
+    if (err) { wrapPL.innerHTML = '<p class="msg error">' + S.escapeHtml(err.message) + "</p>"; return; }
+
+    const live = (oRes.data || []).filter((o) => o.status !== "cancelled");
+    const netOf = (o) => Number(o.subtotal || 0) - Number(o.discount_amount || 0);
+    const revenue = live.reduce((s, o) => s + netOf(o), 0);
+    const cogs = live.reduce((s, o) => s + Number(o.cost_total || 0), 0);
+    const profit = live.reduce((s, o) => s + Number(o.profit || 0), 0);
+    const margin = revenue > 0 ? profit / revenue * 100 : 0;
+
+    const mMap = {};
+    live.forEach((o) => {
+      const d = new Date(o.created_at);
+      const key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+      const m = mMap[key] || (mMap[key] = { month: key, orders: 0, revenue: 0, cogs: 0, profit: 0 });
+      m.orders++; m.revenue += netOf(o); m.cogs += Number(o.cost_total || 0); m.profit += Number(o.profit || 0);
+    });
+    const byMonth = Object.values(mMap).sort((a, b) => b.month.localeCompare(a.month));
+
+    financeData = { orders: live, clients: cRes.data || [], payments: pRes.data || [],
+      pl: { revenue, cogs, profit, margin, orders: live.length, byMonth } };
+
+    wrapPL.innerHTML =
+      statCard(S.money(revenue), "Net revenue") +
+      statCard(S.money(cogs), "Cost (COGS)") +
+      statCard(S.money(profit), "Gross profit", profit < 0 ? "danger" : "") +
+      statCard(margin.toFixed(1) + "%", "Margin") +
+      statCard(live.length, "Orders");
+
+    renderMonthly(byMonth);
+    renderLedgerList(financeData);
+  }
+
+  function renderMonthly(rows) {
+    const w = $("plMonthly");
+    if (!rows.length) { w.innerHTML = '<p class="muted">No orders yet.</p>'; return; }
+    w.innerHTML = "";
+    rows.forEach((m) => {
+      const el = document.createElement("div");
+      el.className = "admin-row";
+      el.innerHTML =
+        '<div class="admin-row-main"><div class="admin-row-title">' + m.month + "</div>" +
+        '<div class="muted small">' + m.orders + " order" + (m.orders === 1 ? "" : "s") +
+        " · revenue " + S.money(m.revenue) + " · COGS " + S.money(m.cogs) + "</div></div>" +
+        '<div class="admin-row-actions"><strong style="color:' +
+        (m.profit < 0 ? "var(--danger)" : "var(--green-dark)") + '">' + S.money(m.profit) + " profit</strong></div>";
+      w.appendChild(el);
+    });
+  }
+
+  function renderLedgerList(fd) {
+    const w = $("ledgerList");
+    const clients = fd.clients.filter((c) => !c.is_admin);
+    if (!clients.length) { w.innerHTML = '<p class="muted">No clients yet.</p>'; return; }
+
+    const ordByUser = {}, payByUser = {};
+    fd.orders.forEach((o) => { (ordByUser[o.user_id] = ordByUser[o.user_id] || []).push(o); });
+    fd.payments.forEach((p) => { (payByUser[p.user_id] = payByUser[p.user_id] || []).push(p); });
+
+    w.innerHTML = "";
+    clients.forEach((c) => {
+      const os = ordByUser[c.id] || [], ps = payByUser[c.id] || [];
+      const debit = os.reduce((s, o) => s + Number(o.total || 0), 0);
+      const credit = ps.reduce((s, p) => s + Number(p.amount || 0), 0);
+      const bal = debit - credit;
+      const el = document.createElement("div");
+      el.className = "admin-row";
+      el.innerHTML =
+        '<div class="admin-row-main"><div class="admin-row-title">' +
+        S.escapeHtml(c.shop_name || c.contact_name || "Client") +
+        ' <span class="pill ' + (bal > 0 ? "warn" : "ok") + '">' +
+        (bal > 0 ? "owes " : "") + S.money(bal) + "</span></div>" +
+        '<div class="muted small">' + os.length + " order" + (os.length === 1 ? "" : "s") +
+        " " + S.money(debit) + " · paid " + S.money(credit) + "</div></div>" +
+        '<div class="admin-row-actions">' +
+        '<button class="btn small primary" data-act="pay">Record payment</button>' +
+        '<button class="btn small ghost" data-act="ledger">Ledger PDF</button></div>';
+      el.querySelector('[data-act="pay"]').addEventListener("click", () => openPaymentModal(c));
+      el.querySelector('[data-act="ledger"]').addEventListener("click", () => window.Reports.ledgerPDF(c, os, ps, cfg));
+      w.appendChild(el);
+    });
+  }
+
+  function openPaymentModal(c) {
+    payClient = c;
+    $("payModalClient").textContent = c.shop_name || c.contact_name || "Client";
+    $("payAmount").value = ""; $("payNote").value = ""; $("payMethod").value = "cash";
+    $("payMsg").textContent = ""; $("payMsg").className = "msg";
+    $("paymentModal").hidden = false;
+    $("payAmount").focus();
+  }
+  function closePaymentModal() { $("paymentModal").hidden = true; payClient = null; }
+
+  async function savePayment(e) {
+    e.preventDefault();
+    if (!payClient) return;
+    const amount = parseFloat($("payAmount").value) || 0;
+    const msg = $("payMsg");
+    if (amount <= 0) { msg.textContent = "Enter a valid amount."; msg.className = "msg error"; return; }
+    const btn = $("paySave"); btn.disabled = true; btn.textContent = "Saving…";
+    const { error } = await S.sb.from("payments").insert({
+      user_id: payClient.id, amount,
+      method: $("payMethod").value, note: $("payNote").value.trim() || null, created_by: me.id,
+    });
+    btn.disabled = false; btn.textContent = "Save payment";
+    if (error) { msg.textContent = error.message; msg.className = "msg error"; return; }
+    closePaymentModal();
+    loadFinance();
   }
 })();

@@ -60,6 +60,7 @@
         <button class="admin-tab" data-tab="products" type="button">Products</button>
         <button class="admin-tab" data-tab="inventory" type="button">Inventory</button>
         <button class="admin-tab" data-tab="orders" type="button">Orders</button>
+        <button class="admin-tab" data-tab="finance" type="button">Finance</button>
       </div>
 
       <!-- customers -->
@@ -85,7 +86,8 @@
               <input type="text" id="pCategoryNew" placeholder="e.g. Spices" />
             </label>
             <label>Unit<input type="text" id="pUnit" placeholder="e.g. Case (4 x 10 lb)" /></label>
-            <label>Price<input type="number" id="pPrice" min="0" step="0.01" required /></label>
+            <label>Price (sell)<input type="number" id="pPrice" min="0" step="0.01" required /></label>
+            <label>Cost (buy)<input type="number" id="pCost" min="0" step="0.01" placeholder="for profit" /></label>
             <label>Min order qty<input type="number" id="pMoq" min="1" step="1" value="1" /></label>
             <label>Stock<input type="number" id="pStock" min="0" step="1" placeholder="blank = untracked" /></label>
             <label>Sort<input type="number" id="pSort" step="1" value="0" /></label>
@@ -108,14 +110,60 @@
       <div data-panel="orders" hidden>
         <div id="ordersList" class="admin-list"></div>
       </div>
+
+      <!-- finance -->
+      <div data-panel="finance" hidden>
+        <div class="panel-toolbar">
+          <p class="muted small" style="margin:0">Profit &amp; loss is computed automatically from each order's cost and price. Client ledgers update live from orders and payments.</p>
+          <button class="btn primary" id="exportPlBtn" type="button">⬇️ Export P&amp;L (PDF)</button>
+        </div>
+        <h3 class="cat-title">Profit &amp; Loss</h3>
+        <div id="plSummary" class="inv-summary"></div>
+        <div id="plMonthly" class="admin-list"></div>
+
+        <h3 class="cat-title">Client accounts &amp; ledgers</h3>
+        <div id="ledgerList" class="admin-list"></div>
+      </div>
     </section>
   </main>
+
+  <!-- record payment modal -->
+  <div class="modal" id="paymentModal" hidden>
+    <div class="modal-card" style="width:380px">
+      <div class="invoice" style="padding:20px">
+        <h3 id="payModalTitle">Record payment</h3>
+        <p class="muted small" id="payModalClient"></p>
+        <form id="paymentForm">
+          <label>Amount
+            <input type="number" id="payAmount" min="0.01" step="0.01" required />
+          </label>
+          <label>Method
+            <select id="payMethod">
+              <option value="cash">Cash</option>
+              <option value="bank">Bank transfer</option>
+              <option value="card">Card</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label>Note (optional)
+            <input type="text" id="payNote" placeholder="Reference / invoice #" />
+          </label>
+          <div class="row-2" style="margin-top:12px">
+            <button class="btn ghost" type="button" id="payCancel">Cancel</button>
+            <button class="btn primary" type="submit" id="paySave">Save payment</button>
+          </div>
+          <p class="msg" id="payMsg"></p>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/store.js"></script>
   <script src="js/catalogue.js"></script>
+  <script src="js/reports.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

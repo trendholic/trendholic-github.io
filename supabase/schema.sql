@@ -39,7 +39,8 @@ create table if not exists public.products (
   image_url   text,                                 -- product photo (Supabase Storage)
   category    text    not null default 'General',
   unit        text    not null default 'unit',      -- e.g. "Case (4 x 10 lb)"
-  price       numeric not null check (price >= 0),   -- wholesale price per unit
+  price       numeric not null check (price >= 0),   -- wholesale price per unit (what you SELL for)
+  cost        numeric not null default 0 check (cost >= 0),  -- purchase cost per unit (for profit/loss)
   moq         integer not null default 1 check (moq >= 1),  -- minimum order quantity
   stock       integer,                                 -- on-hand qty; NULL = untracked / unlimited
   sort        integer not null default 0,
@@ -50,6 +51,7 @@ create table if not exists public.products (
 alter table public.products add column if not exists description text;
 alter table public.products add column if not exists image_url   text;
 alter table public.products add column if not exists stock       integer;
+alter table public.products add column if not exists cost        numeric not null default 0;
 
 -- ---------------------------------------------------------------------
 -- 3. ORDERS  (one row per placed order; line items stored as JSON)
@@ -65,6 +67,8 @@ create table if not exists public.orders (
   tax_rate        numeric not null default 0,
   tax_amount      numeric not null default 0,
   total           numeric not null default 0,
+  cost_total      numeric not null default 0,          -- COGS snapshot at order time
+  profit          numeric not null default 0,          -- net sales − COGS (gross profit)
   note            text,
   status          text    not null default 'new',     -- new | confirmed | fulfilled | cancelled
   payment_status  text    not null default 'unpaid',  -- unpaid | paid
@@ -74,6 +78,8 @@ create table if not exists public.orders (
 -- if you already created the orders table before, add the new columns:
 alter table public.orders add column if not exists payment_status text not null default 'unpaid';
 alter table public.orders add column if not exists paid_at        timestamptz;
+alter table public.orders add column if not exists cost_total     numeric not null default 0;
+alter table public.orders add column if not exists profit         numeric not null default 0;
 
 -- =====================================================================
 --  HELPER FUNCTIONS  (SECURITY DEFINER avoids RLS recursion on profiles)
@@ -152,9 +158,11 @@ declare
   pid      uuid;
   q        numeric;
   p        numeric;
+  c        numeric;
   st       integer;
   pname    text;
   sub      numeric := 0;
+  csum     numeric := 0;
   drate    numeric := 0;
 begin
   if new.items is null or jsonb_array_length(new.items) = 0 then
@@ -166,14 +174,15 @@ begin
     q   := coalesce((it->>'qty')::numeric, 0);
     if q <= 0 then raise exception 'Invalid quantity for product %', pid; end if;
     -- Lock the product row so concurrent orders can't oversell the same stock.
-    select price, stock, name into p, st, pname
+    select price, cost, stock, name into p, c, st, pname
       from public.products where id = pid and active = true for update;
     if p is null then raise exception 'Unknown or inactive product %', pid; end if;
     -- Enforce inventory only when the product is stock-tracked (stock not null).
     if st is not null and q > st then
       raise exception 'Not enough stock for "%": % left, % requested', pname, st, q;
     end if;
-    sub := sub + (p * q);
+    sub  := sub  + (p * q);
+    csum := csum + (coalesce(c, 0) * q);     -- snapshot COGS so historical profit stays accurate
   end loop;
 
   -- Passed all checks — now decrement on-hand stock for tracked products.
@@ -194,6 +203,9 @@ begin
   if new.tax_rate is null or new.tax_rate < 0 then new.tax_rate := 0; end if;
   new.tax_amount      := round((new.subtotal - new.discount_amount) * new.tax_rate / 100.0, 2);
   new.total           := new.subtotal - new.discount_amount + new.tax_amount;
+  -- profit/loss: COGS snapshot and gross profit (net sales − COGS; tax is pass-through)
+  new.cost_total      := round(csum, 2);
+  new.profit          := round((new.subtotal - new.discount_amount) - new.cost_total, 2);
   new.status          := 'new';
   return new;
 end; $$;
@@ -263,6 +275,33 @@ create policy orders_select on public.orders
 drop policy if exists orders_admin_update on public.orders;
 create policy orders_admin_update on public.orders
   for update using (public.is_admin()) with check (public.is_admin());
+
+-- =====================================================================
+--  PAYMENTS  (money received from a client — credits on their ledger)
+--  Orders are debits; payments are credits. A client's outstanding balance
+--  is simply (sum of order totals) − (sum of payments). Maintained live.
+-- =====================================================================
+create table if not exists public.payments (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,  -- the client
+  amount      numeric not null check (amount > 0),
+  method      text,                                  -- cash | bank | card | other
+  note        text,
+  created_by  uuid references auth.users(id),        -- admin who recorded it
+  created_at  timestamptz not null default now()
+);
+create index if not exists payments_user_idx on public.payments(user_id);
+
+alter table public.payments enable row level security;
+
+-- Admins manage all payments; a client may read their own.
+drop policy if exists payments_admin_all on public.payments;
+create policy payments_admin_all on public.payments
+  for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists payments_select_own on public.payments;
+create policy payments_select_own on public.payments
+  for select using (user_id = auth.uid() or public.is_admin());
 
 -- =====================================================================
 --  PRODUCT IMAGE STORAGE

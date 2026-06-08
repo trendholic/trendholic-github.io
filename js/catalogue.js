@@ -76,6 +76,35 @@
     }
   }
 
+  // Contents / index box on the first page: every real category + item count,
+  // plus the tracked inventory value. Categories come only from the data.
+  function contents(doc, y, cats, map, products, cfg) {
+    const invValue = products.reduce((s, p) => s + (p.stock != null ? Number(p.price || 0) * p.stock : 0), 0);
+    const rows = Math.ceil(cats.length / 2);
+    const h = 12 + rows * 5.5 + 6;
+    doc.setDrawColor(225, 228, 231); doc.setFillColor(250, 251, 251);
+    doc.roundedRect(M, y, PW - M * 2, h, 2, 2, "FD");
+    doc.setTextColor.apply(doc, INK); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+    doc.text("Contents", M + 4, y + 7);
+
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8.5);
+    const colW = (PW - M * 2 - 8) / 2;
+    cats.forEach((c, i) => {
+      const cx = M + 4 + (i % 2) * colW;
+      const cy = y + 12 + Math.floor(i / 2) * 5.5;
+      doc.setTextColor.apply(doc, INK);
+      doc.text(String(c), cx, cy);
+      doc.setTextColor.apply(doc, GREY);
+      doc.text(map[c].length + " item" + (map[c].length === 1 ? "" : "s"), cx + colW - 8, cy, { align: "right" });
+    });
+
+    doc.setDrawColor(230, 232, 235); doc.line(M + 4, y + h - 5.5, PW - M - 4, y + h - 5.5);
+    doc.setTextColor.apply(doc, GREEN); doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
+    doc.text("Tracked inventory value: " + (cfg.CURRENCY || "$") + invValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      M + 4, y + h - 1.5);
+    return y + h + 5;
+  }
+
   function categoryBand(doc, y, cat, n) {
     doc.setFillColor.apply(doc, GREEN);
     doc.rect(M, y, PW - M * 2, 8, "F");
@@ -148,6 +177,7 @@
 
     let y = firstHeader(doc, cfg, products.length, cats.length);
     const newPage = () => { doc.addPage(); y = runningHeader(doc, cfg); };
+    if (cats.length > 1) y = contents(doc, y, cats, map, products, cfg);
 
     cats.forEach((cat) => {
       if (y + 12 + CARD_H > BOTTOM) newPage();
