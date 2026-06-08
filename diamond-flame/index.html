@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Diamond Flame Home Appliances · Wholesale Orders</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">🔥</span>
+      <div>
+        <div class="brand-name" id="brandName">Diamond Flame Home Appliances</div>
+        <div class="brand-tagline" id="brandTagline"></div>
+      </div>
+    </div>
+    <div class="topbar-actions" id="topbarActions" hidden>
+      <a class="btn ghost" id="adminLink" href="admin.html" hidden>Admin</a>
+      <button class="btn ghost" id="cartToggle" type="button">
+        Order <span class="badge" id="cartCount" hidden>0</span>
+      </button>
+      <button class="btn ghost" id="logoutBtn" type="button">Sign out</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ SETUP NEEDED ============ -->
+    <section class="view center" data-view="setup" hidden>
+      <div class="panel narrow">
+        <h2>Almost there — connect the backend</h2>
+        <p class="muted">This site needs a free Supabase backend so prices stay private.
+          Open <code>js/config.js</code> and fill in your Supabase URL and anon key,
+          then run <code>supabase/schema.sql</code> in the Supabase SQL editor.</p>
+        <p class="muted">Full step-by-step setup is in <code>README.md</code>.</p>
+      </div>
+    </section>
+
+    <!-- ============ LOGIN / SIGNUP ============ -->
+    <section class="view center" data-view="auth" hidden>
+      <div class="panel narrow auth">
+        <div class="auth-head">
+          <span class="logo big">🔥</span>
+          <h2>Wholesale customer portal</h2>
+          <p class="muted">Sign in to see your wholesale prices and place bulk orders.
+            Prices are visible to approved customers only.</p>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" id="tabLogin" type="button">Sign in</button>
+          <button class="tab" id="tabSignup" type="button">Request access</button>
+        </div>
+
+        <form id="loginForm">
+          <label>Email
+            <input type="email" id="loginEmail" required autocomplete="email" />
+          </label>
+          <label>Password
+            <input type="password" id="loginPassword" required autocomplete="current-password" />
+          </label>
+          <button class="btn primary block" id="loginBtn" type="submit">Sign in</button>
+          <button class="link" id="forgotLink" type="button">Forgot password?</button>
+        </form>
+
+        <form id="forgotForm" hidden>
+          <p class="muted small">Enter your account email and we'll send you a link to reset your password.</p>
+          <label>Email
+            <input type="email" id="forgotEmail" required autocomplete="email" />
+          </label>
+          <button class="btn primary block" id="forgotBtn" type="submit">Send reset link</button>
+          <button class="link" id="backToLogin" type="button">← Back to sign in</button>
+        </form>
+
+        <form id="signupForm" hidden>
+          <p class="muted small">Apply to become a reseller. All fields marked * are required.</p>
+          <label>👤 Name *
+            <input type="text" id="signupName" required autocomplete="name" />
+          </label>
+          <label>✉️ Email *
+            <input type="email" id="signupEmail" required autocomplete="email" />
+          </label>
+          <label>🏢 Company name *
+            <input type="text" id="signupShop" required autocomplete="organization" />
+          </label>
+          <label>📍 Company address *
+            <textarea id="signupAddress" rows="2" required autocomplete="street-address"></textarea>
+          </label>
+          <label>💳 Payable contact details *
+            <input type="text" id="signupPayable" required placeholder="Accounts payable name / email" />
+          </label>
+          <label>🏦 Bank details (optional)
+            <input type="text" id="signupBank" placeholder="For ACH / wire payments" />
+          </label>
+          <label>📞 Phone *
+            <input type="tel" id="signupPhone" required autocomplete="tel" />
+          </label>
+          <label>📄 Upload resale certificate *
+            <input type="file" id="signupResaleCert" required accept="image/*,application/pdf" />
+          </label>
+          <label>🪪 Upload state issued ID *
+            <input type="file" id="signupStateId" required accept="image/*,application/pdf" />
+          </label>
+          <label>🔒 Password *
+            <input type="password" id="signupPassword" required minlength="6" autocomplete="new-password" />
+          </label>
+          <button class="btn primary block" id="signupBtn" type="submit">Submit application</button>
+        </form>
+
+        <p class="msg" id="authMsg"></p>
+      </div>
+    </section>
+
+    <!-- ============ SET NEW PASSWORD (arrived via reset link) ============ -->
+    <section class="view center" data-view="reset" hidden>
+      <div class="panel narrow auth">
+        <span class="logo big">🔑</span>
+        <h2>Set a new password</h2>
+        <p class="muted">Choose a new password for your account.</p>
+        <form id="resetForm">
+          <label>New password
+            <input type="password" id="newPassword" required minlength="6" autocomplete="new-password" />
+          </label>
+          <button class="btn primary block" type="submit">Update password</button>
+        </form>
+        <p class="msg" id="resetMsg"></p>
+      </div>
+    </section>
+
+    <!-- ============ PENDING APPROVAL ============ -->
+    <section class="view center" data-view="pending" hidden>
+      <div class="panel narrow">
+        <span class="logo big">⏳</span>
+        <h2>Your account is awaiting approval</h2>
+        <p class="muted">Thanks for signing up (<strong id="pendingEmail"></strong>).
+          The store needs to approve your account before you can view wholesale prices and order.
+          You'll be able to log in normally once approved.</p>
+        <button class="btn ghost" id="logoutBtn2" type="button">Sign out</button>
+      </div>
+    </section>
+
+    <!-- ============ SHOP ============ -->
+    <section class="view" data-view="shop" hidden>
+      <div class="shop-head">
+        <div>
+          <h2>Hello, <span id="welcomeName">there</span> 👋</h2>
+          <span class="pill" id="discountBadge" hidden></span>
+        </div>
+        <input type="search" id="search" placeholder="Search products…" />
+      </div>
+
+      <div id="catBar" class="cat-bar"></div>
+
+      <div id="catalog" class="catalog"></div>
+    </section>
+  </main>
+
+  <!-- ============ CART PANEL (slide-in) ============ -->
+  <aside class="cart-panel" id="cartPanel" aria-label="Your order">
+    <div class="cart-head">
+      <h3>Your order</h3>
+      <button class="icon-btn" id="cartClose" type="button" aria-label="close">✕</button>
+    </div>
+    <div class="cart-items" id="cartItems"></div>
+    <div class="cart-foot">
+      <label class="note-label">Note for the store (optional)
+        <textarea id="orderNote" rows="2" placeholder="Delivery date, special instructions…"></textarea>
+      </label>
+      <div class="sum-row"><span>Subtotal</span><span id="sumSubtotal"></span></div>
+      <div class="sum-row" id="rowDiscount" hidden><span id="discLabel">Discount</span><span id="sumDiscount"></span></div>
+      <div class="sum-row" id="rowTax" hidden><span id="taxLabel">Tax</span><span id="sumTax"></span></div>
+      <div class="sum-row total"><span>Total</span><span id="sumTotal"></span></div>
+      <button class="btn primary block" id="placeOrderBtn" type="button" disabled>Place order</button>
+      <p class="muted small">Placing the order opens WhatsApp with the invoice ready to send.</p>
+    </div>
+  </aside>
+
+  <!-- ============ INVOICE MODAL ============ -->
+  <div class="modal" id="invoiceModal" hidden>
+    <div class="modal-card">
+      <div class="invoice">
+        <div class="invoice-top">
+          <div>
+            <div class="invoice-store" id="invStoreName"></div>
+            <div class="muted small">Order confirmation</div>
+          </div>
+          <div class="invoice-meta">
+            <div><strong id="invoiceNo"></strong></div>
+            <div class="muted small" id="invoiceDate"></div>
+          </div>
+        </div>
+        <div class="muted small" id="invoiceCustomer"></div>
+        <table class="invoice-table">
+          <thead>
+            <tr><th>Item</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Amount</th></tr>
+          </thead>
+          <tbody id="invoiceLines"></tbody>
+        </table>
+        <div class="invoice-sums">
+          <div class="sum-row"><span>Subtotal</span><span id="invSubtotal"></span></div>
+          <div class="sum-row" id="invRowDiscount" hidden><span id="invDiscLabel">Discount</span><span id="invDiscount"></span></div>
+          <div class="sum-row" id="invRowTax" hidden><span id="invTaxLabel">Tax</span><span id="invTax"></span></div>
+          <div class="sum-row total"><span>Total</span><span id="invTotal"></span></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn pay block" id="payOnlineBtn" type="button" hidden>🔒 Pay securely online</button>
+        <p class="pay-trust" id="payTrust" hidden>
+          256-bit encrypted checkout · payment handled securely by <strong id="payBrand"></strong>
+        </p>
+        <button class="btn whatsapp block" id="waSendBtn" type="button">📲 Send invoice on WhatsApp</button>
+        <div class="row-2">
+          <button class="btn ghost" id="newOrderBtn" type="button">New order</button>
+          <button class="btn ghost" id="closeModalBtn" type="button">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">
+    <span id="footName"></span> · <span id="year"></span>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    // small bits that need config after load
+    document.getElementById("footName").textContent = (window.APP_CONFIG||{}).STORE_NAME || "";
+    document.getElementById("invStoreName").textContent = (window.APP_CONFIG||{}).STORE_NAME || "";
+  </script>
+</body>
+</html>

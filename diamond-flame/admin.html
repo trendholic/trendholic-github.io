@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Admin · Diamond Flame Home Appliances</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">🔥</span>
+      <div class="brand-name" id="brandName">Diamond Flame · Admin</div>
+    </div>
+    <div class="topbar-actions" id="topActions" hidden>
+      <a class="btn ghost" href="index.html">Storefront</a>
+      <button class="btn ghost" id="logoutBtn" type="button">Sign out</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- setup -->
+    <section class="view center" data-view="setup" hidden>
+      <div class="panel narrow">
+        <h2>Backend not configured</h2>
+        <p class="muted">Fill in <code>js/config.js</code> and run <code>supabase/schema.sql</code>. See <code>README.md</code>.</p>
+      </div>
+    </section>
+
+    <!-- login -->
+    <section class="view center" data-view="auth" hidden>
+      <div class="panel narrow auth">
+        <span class="logo big">🧾</span>
+        <h2>Store admin sign in</h2>
+        <form id="loginForm">
+          <label>Email<input type="email" id="email" required autocomplete="email" /></label>
+          <label>Password<input type="password" id="password" required autocomplete="current-password" /></label>
+          <button class="btn primary block" type="submit">Sign in</button>
+        </form>
+        <p class="msg" id="authMsg"></p>
+      </div>
+    </section>
+
+    <!-- denied -->
+    <section class="view center" data-view="denied" hidden>
+      <div class="panel narrow">
+        <span class="logo big">🚫</span>
+        <h2>Not an admin account</h2>
+        <p class="muted">This account doesn't have admin rights. To grant admin, run the SQL
+          snippet at the bottom of <code>supabase/schema.sql</code> with your email.</p>
+        <button class="btn ghost" type="button" onclick="window.Store.sb.auth.signOut()">Sign out</button>
+      </div>
+    </section>
+
+    <!-- app -->
+    <section class="view" data-view="app" hidden>
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="customers" type="button">Customers</button>
+        <button class="admin-tab" data-tab="products" type="button">Products</button>
+        <button class="admin-tab" data-tab="inventory" type="button">Inventory</button>
+        <button class="admin-tab" data-tab="orders" type="button">Orders</button>
+        <button class="admin-tab" data-tab="finance" type="button">Finance</button>
+      </div>
+
+      <!-- customers -->
+      <div data-panel="customers">
+        <p class="muted">Approve customers so they can see prices and order. Set a per-customer discount %.</p>
+        <div id="customersList" class="admin-list"></div>
+      </div>
+
+      <!-- products -->
+      <div data-panel="products" hidden>
+        <div class="panel-toolbar">
+          <p class="muted small" style="margin:0">Export every product — grouped by category, with images &amp; live stock — as a PDF catalogue.</p>
+          <button class="btn primary" id="exportCatalogueBtn" type="button">⬇️ Export catalogue (PDF)</button>
+        </div>
+        <form id="addProductForm" class="add-form panel">
+          <h3>Add product</h3>
+          <div class="form-grid">
+            <label>Name<input type="text" id="pName" required /></label>
+            <label>Category
+              <select id="pCategory"></select>
+            </label>
+            <label id="pCategoryNewWrap" hidden>New category name
+              <input type="text" id="pCategoryNew" placeholder="e.g. Spices" />
+            </label>
+            <label>Unit<input type="text" id="pUnit" placeholder="e.g. Case (4 x 10 lb)" /></label>
+            <label>Price (sell)<input type="number" id="pPrice" min="0" step="0.01" required /></label>
+            <label>Cost (buy)<input type="number" id="pCost" min="0" step="0.01" placeholder="for profit" /></label>
+            <label>Min order qty<input type="number" id="pMoq" min="1" step="1" value="1" /></label>
+            <label>Stock<input type="number" id="pStock" min="0" step="1" placeholder="blank = untracked" /></label>
+            <label>Sort<input type="number" id="pSort" step="1" value="0" /></label>
+          </div>
+          <label>Description<input type="text" id="pDesc" placeholder="Short blurb shown on the product card" /></label>
+          <label>Photo (optional)<input type="file" id="pImage" accept="image/*" /></label>
+          <button class="btn primary" type="submit">Add product</button>
+        </form>
+        <div id="productsList" class="admin-list"></div>
+      </div>
+
+      <!-- inventory -->
+      <div data-panel="inventory" hidden>
+        <p class="muted">Track on-hand stock. Stock drops automatically as customers order; leave a value blank to mark a product as untracked / unlimited.</p>
+        <div id="invSummary" class="inv-summary"></div>
+        <div id="inventoryList" class="admin-list"></div>
+      </div>
+
+      <!-- orders -->
+      <div data-panel="orders" hidden>
+        <div id="ordersList" class="admin-list"></div>
+      </div>
+
+      <!-- finance -->
+      <div data-panel="finance" hidden>
+        <div class="panel-toolbar">
+          <p class="muted small" style="margin:0">Profit &amp; loss is computed automatically from each order's cost and price. Client ledgers update live from orders and payments.</p>
+          <button class="btn primary" id="exportPlBtn" type="button">⬇️ Export P&amp;L (PDF)</button>
+        </div>
+        <h3 class="cat-title">Profit &amp; Loss</h3>
+        <div class="pl-range">
+          <div class="pl-presets">
+            <button class="btn small ghost" data-range="month" type="button">This month</button>
+            <button class="btn small ghost" data-range="lastmonth" type="button">Last month</button>
+            <button class="btn small ghost" data-range="year" type="button">This year</button>
+            <button class="btn small ghost active" data-range="all" type="button">All time</button>
+          </div>
+          <label class="inline">From <input type="date" id="plFrom" /></label>
+          <label class="inline">To <input type="date" id="plTo" /></label>
+          <span class="muted small" id="plRangeLabel"></span>
+        </div>
+        <div id="plSummary" class="inv-summary"></div>
+        <div id="plMonthly" class="admin-list"></div>
+
+        <h3 class="cat-title">Client accounts &amp; ledgers</h3>
+        <div id="ledgerList" class="admin-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- record payment modal -->
+  <div class="modal" id="paymentModal" hidden>
+    <div class="modal-card" style="width:380px">
+      <div class="invoice" style="padding:20px">
+        <h3 id="payModalTitle">Record payment</h3>
+        <p class="muted small" id="payModalClient"></p>
+        <form id="paymentForm">
+          <label>Amount
+            <input type="number" id="payAmount" min="0.01" step="0.01" required />
+          </label>
+          <label>Method
+            <select id="payMethod">
+              <option value="cash">Cash</option>
+              <option value="bank">Bank transfer</option>
+              <option value="card">Card</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label>Note (optional)
+            <input type="text" id="payNote" placeholder="Reference / invoice #" />
+          </label>
+          <div class="row-2" style="margin-top:12px">
+            <button class="btn ghost" type="button" id="payCancel">Cancel</button>
+            <button class="btn primary" type="submit" id="paySave">Save payment</button>
+          </div>
+          <p class="msg" id="payMsg"></p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/catalogue.js"></script>
+  <script src="js/reports.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
