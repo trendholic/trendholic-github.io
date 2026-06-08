@@ -78,7 +78,12 @@
           <h3>Add product</h3>
           <div class="form-grid">
             <label>Name<input type="text" id="pName" required /></label>
-            <label>Category<input type="text" id="pCategory" placeholder="e.g. Rice" /></label>
+            <label>Category
+              <select id="pCategory"></select>
+            </label>
+            <label id="pCategoryNewWrap" hidden>New category name
+              <input type="text" id="pCategoryNew" placeholder="e.g. Spices" />
+            </label>
             <label>Unit<input type="text" id="pUnit" placeholder="e.g. Case (4 x 10 lb)" /></label>
             <label>Price<input type="number" id="pPrice" min="0" step="0.01" required /></label>
             <label>Min order qty<input type="number" id="pMoq" min="1" step="1" value="1" /></label>

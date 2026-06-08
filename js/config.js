@@ -22,6 +22,10 @@ window.APP_CONFIG = {
   TAX_LABEL:  "Tax",     // label for tax line on the invoice
   TAX_RATE:   0,         // tax percent applied to orders, e.g. 5 (use 0 for none)
 
+  // ---- Admin security ----------------------------------------------
+  // Auto sign-out from the admin portal after this many minutes of inactivity.
+  ADMIN_IDLE_MINUTES: 20,
+
   // ---- Inventory ---------------------------------------------------
   // Products at or below this quantity show an "Only N left" badge.
   // Leave a product's stock blank in Admin to mark it as untracked / unlimited.

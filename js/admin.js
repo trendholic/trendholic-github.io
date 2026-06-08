@@ -8,6 +8,8 @@
   const $ = (id) => document.getElementById(id);
 
   let me = null;
+  let categories = [];        // distinct categories that already exist in the store
+  const NEW_CAT = "__new__";  // sentinel option value for "add new category"
 
   document.addEventListener("DOMContentLoaded", init);
 
@@ -33,10 +35,38 @@
     $("addProductForm").addEventListener("submit", addProduct);
     $("exportCatalogueBtn").addEventListener("click", exportCatalogue);
 
+    // Smart category picker: reveal the "new category" field only when chosen,
+    // so the admin reuses existing categories and avoids typo-duplicates.
+    $("pCategory").addEventListener("change", () => {
+      const isNew = $("pCategory").value === NEW_CAT;
+      $("pCategoryNewWrap").hidden = !isNew;
+      if (isNew) $("pCategoryNew").focus();
+    });
+
+    setupIdleLogout();
+
     S.sb.auth.onAuthStateChange((_e, session) => session ? gate() : show("auth"));
     const { data } = await S.sb.auth.getSession();
     data.session ? gate() : show("auth");
   }
+
+  // ---- security: auto sign-out after a period of inactivity ----
+  function setupIdleLogout() {
+    const IDLE_MS = (Number(cfg.ADMIN_IDLE_MINUTES) || 20) * 60 * 1000;
+    let timer = null;
+    const reset = () => {
+      clearTimeout(timer);
+      if (!me) return;                       // only count down while signed in
+      timer = setTimeout(() => {
+        if (me) { alert("Signed out after inactivity for security."); S.sb.auth.signOut(); }
+      }, IDLE_MS);
+    };
+    ["click", "keydown", "mousemove", "touchstart", "scroll"].forEach((ev) =>
+      document.addEventListener(ev, reset, { passive: true }));
+    window.addEventListener("focus", reset);
+    resetIdle = reset;                        // expose so gate() can arm it on login
+  }
+  let resetIdle = () => {};
 
   function show(view) {
     document.querySelectorAll("[data-view]").forEach((el) =>
@@ -57,7 +87,55 @@
     }
     me = data;
     show("app");
+    resetIdle();                 // start the inactivity timer now that we're in
+    await refreshCategories();   // load existing categories for the picker
+    refreshBadges();             // pending-customers / unpaid-orders counts
     selectTab("customers");
+  }
+
+  // ---- categories: pulled live from existing products (never invented) ----
+  async function refreshCategories() {
+    const { data } = await S.sb.from("products").select("category");
+    const set = new Set((data || []).map((r) => (r.category || "").trim()).filter(Boolean));
+    categories = [...set].sort((a, b) => a.localeCompare(b));
+    populateCategorySelect();
+  }
+
+  function populateCategorySelect() {
+    const sel = $("pCategory");
+    if (!sel) return;
+    const keep = sel.value;
+    sel.innerHTML =
+      categories.map((c) => `<option value="${S.escapeHtml(c)}">${S.escapeHtml(c)}</option>`).join("") +
+      `<option value="${NEW_CAT}">➕ Add new category…</option>`;
+    if ([...sel.options].some((o) => o.value === keep)) sel.value = keep;
+    $("pCategoryNewWrap").hidden = sel.value !== NEW_CAT;
+  }
+
+  // Build a <select> of all categories for inline re-categorising of a product,
+  // always including the product's current value even if unusual.
+  function categoryOptions(current) {
+    const list = categories.includes(current) || !current ? categories : [current, ...categories];
+    return list.map((c) => `<option value="${S.escapeHtml(c)}" ${c === current ? "selected" : ""}>${S.escapeHtml(c)}</option>`).join("");
+  }
+
+  // ---- tab badges (pending customers / unpaid orders) ----
+  function setTabBadge(tab, n, cls) {
+    const btn = document.querySelector('.admin-tab[data-tab="' + tab + '"]');
+    if (!btn) return;
+    let b = btn.querySelector(".tab-badge");
+    if (!b) { b = document.createElement("span"); b.className = "tab-badge"; btn.appendChild(b); }
+    if (!n) { b.hidden = true; return; }
+    b.hidden = false; b.textContent = n; b.className = "tab-badge" + (cls ? " " + cls : "");
+  }
+
+  async function refreshBadges() {
+    const pend = await S.sb.from("profiles").select("id", { count: "exact", head: true }).eq("approved", false);
+    setTabBadge("customers", pend.count || 0, "warn");
+    const unpaid = await S.sb.from("orders").select("id", { count: "exact", head: true }).neq("payment_status", "paid");
+    setTabBadge("orders", unpaid.count || 0, "warn");
+    const prods = await S.sb.from("products").select("id", { count: "exact", head: true });
+    setTabBadge("products", prods.count || 0, "");
   }
 
   function selectTab(tab) {
@@ -110,6 +188,7 @@
           .update({ approved: !c.approved, discount_pct: disc }).eq("id", c.id);
         if (error) alert(error.message);
         loadCustomers();
+        refreshBadges();
       });
       row.querySelector(".disc").addEventListener("change", async (e) => {
         const disc = parseFloat(e.target.value) || 0;
@@ -149,11 +228,15 @@
       if (file) image_url = await S.uploadProductImage(file);
 
       const stockRaw = $("pStock").value.trim();
+      let category = $("pCategory").value;
+      if (category === NEW_CAT) category = $("pCategoryNew").value.trim();
+      category = category.trim() || "General";
+
       const payload = {
         name: $("pName").value.trim(),
         description: $("pDesc").value.trim() || null,
         image_url,
-        category: $("pCategory").value.trim() || "General",
+        category,
         unit: $("pUnit").value.trim() || "unit",
         price: parseFloat($("pPrice").value) || 0,
         moq: parseInt($("pMoq").value, 10) || 1,
@@ -163,6 +246,8 @@
       const { error } = await S.sb.from("products").insert(payload);
       if (error) throw error;
       e.target.reset();
+      $("pCategoryNewWrap").hidden = true;
+      await refreshCategories();   // pick up a newly added category
       loadProducts();
     } catch (err) {
       alert(err.message || err);
@@ -197,15 +282,23 @@
             ${p.active ? "" : '<span class="pill warn">hidden</span>'}
             ${stockBadge(p)}
           </div>
-          <div class="muted small">${S.escapeHtml(p.category)} · ${S.escapeHtml(p.unit)} · MOQ ${p.moq}</div>
+          <div class="muted small">${S.escapeHtml(p.unit)} · MOQ ${p.moq}</div>
         </div>
         <div class="admin-row-actions">
+          <label class="inline">Category
+            <select class="cat" style="width:auto">${categoryOptions(p.category)}</select>
+          </label>
           <label class="inline">${cfg.CURRENCY}
             <input type="number" min="0" step="0.01" value="${p.price}" class="price" style="width:100px" />
           </label>
           <button class="btn small ghost" data-act="toggle">${p.active ? "Hide" : "Show"}</button>
           <button class="btn small" data-act="del">Delete</button>
         </div>`;
+
+      row.querySelector(".cat").addEventListener("change", async (e) => {
+        const { error } = await S.sb.from("products").update({ category: e.target.value }).eq("id", p.id);
+        if (error) alert(error.message); else loadProducts();
+      });
 
       row.querySelector(".photo-input").addEventListener("change", async (e) => {
         const file = e.target.files[0];
@@ -353,7 +446,7 @@
         e.target.disabled = true;
         const { error } = await S.sb.from("orders")
           .update({ payment_status: paid ? "unpaid" : "paid" }).eq("id", o.id);
-        if (error) { alert(error.message); e.target.disabled = false; } else loadOrders();
+        if (error) { alert(error.message); e.target.disabled = false; } else { loadOrders(); refreshBadges(); }
       });
       const wa = card.querySelector("a.whatsapp");
       wa.href = S.whatsappLink(S.buildInvoiceText(o, prof), prof.phone || "");

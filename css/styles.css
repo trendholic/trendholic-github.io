@@ -194,6 +194,12 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--green); out
 .admin-tabs { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
 .admin-tab { border: 1px solid var(--line); background: #fff; padding: 9px 16px; border-radius: 10px; font-weight: 600; cursor: pointer; color: var(--muted); }
 .admin-tab.active { background: var(--green); border-color: var(--green); color: #fff; }
+.admin-tab { display: inline-flex; align-items: center; gap: 7px; }
+.tab-badge {
+  background: var(--warn); color: #fff; border-radius: 999px; min-width: 18px;
+  padding: 0 6px; font-size: .72rem; font-weight: 800; text-align: center; line-height: 18px;
+}
+.admin-tab.active .tab-badge { background: #fff; color: var(--green-dark); }
 .admin-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
 .admin-row {
   background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
