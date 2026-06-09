@@ -53,9 +53,9 @@ accounts and prices — is handled by **Supabase**, a free backend.
    ```js
    STORE_NAME:     "Diamond Flame Home Appliances",
    STORE_WHATSAPP: "13313049903",  // digits only, with country code, no + or spaces
-   CURRENCY:       "$",
-   TAX_LABEL:      "Tax",
-   TAX_RATE:       0                // e.g. 5 for 5% tax, or 0 for none
+   CURRENCY:       "Rs ",          // Pakistani Rupee
+   TAX_LABEL:      "GST",
+   TAX_RATE:       0                // e.g. 17 for 17% GST, or 0 for none
    ```
 
 > The anon key is **meant** to be public. Your data is safe because the SQL

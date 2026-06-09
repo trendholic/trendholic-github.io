@@ -21,8 +21,8 @@ window.APP_CONFIG = {
   STORE_WHATSAPP: "13313049903",
 
   // ---- Money -------------------------------------------------------
-  CURRENCY:   "$",       // symbol shown next to prices
-  TAX_LABEL:  "Tax",     // label for tax line on the invoice
+  CURRENCY:   "Rs ",     // symbol shown next to prices (Pakistani Rupee)
+  TAX_LABEL:  "GST",     // label for tax line on the invoice
   TAX_RATE:   0,         // tax percent applied to orders, e.g. 5 (use 0 for none)
 
   // ---- Admin security ----------------------------------------------
@@ -47,6 +47,6 @@ window.APP_CONFIG = {
   //                 {invoice} placeholders in the URL and they’ll be filled in.
   PAYMENT_PROVIDER: "paypal",                              // "paypal" | "link" | "" (off)
   PAYMENT_LINK:     "https://www.paypal.com/paypalme/diamondflame",
-  PAYMENT_CURRENCY: "USD",                                 // ISO code for PayPal.me amounts
+  PAYMENT_CURRENCY: "PKR",                                 // ISO code for PayPal.me amounts
   PAYMENT_BRAND:    "PayPal"                               // shown in the "secured by …" line
 };
