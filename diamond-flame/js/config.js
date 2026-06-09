@@ -9,8 +9,8 @@ window.APP_CONFIG = {
   // Create your OWN Supabase project for Diamond Flame and paste its
   // URL + anon key here (do NOT reuse another store's project, or you'll
   // see that store's products). Until filled in, the site shows a setup screen.
-  SUPABASE_URL:      "https://YOUR-PROJECT.supabase.co",
-  SUPABASE_ANON_KEY: "YOUR-PUBLIC-ANON-KEY",
+  SUPABASE_URL:      "https://rwsfaotpdhznspueakze.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3c2Zhb3RwZGh6bnNwdWVha3plIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5NTcyMTksImV4cCI6MjA5NjUzMzIxOX0.92igfOS3aEhWxItKrpem0NrYd9K3fYwJLkKe9wisuL4",
 
   // ---- Your store --------------------------------------------------
   STORE_NAME:     "Diamond Flame Home Appliances",
