@@ -15,15 +15,14 @@
 
   // Shop-by-category chips. `label` is the matching token ("All" = no filter).
   const CATEGORIES = [
-    { icon: "🛒", label: "All" },
-    { icon: "🥜", label: "NUTS" },
-    { icon: "🌶️", label: "SPICES" },
-    { icon: "🍚", label: "RICE" },
-    { icon: "🍪", label: "SNACK" },
-    { icon: "🫘", label: "DALS & BEANS" },
-    { icon: "🥤", label: "DRINKS" },
-    { icon: "🧊", label: "FROZEN" },
-    { icon: "🌾", label: "FLOUR" }
+    { icon: "🏠", label: "All" },
+    { icon: "❄️", label: "Refrigeration" },
+    { icon: "🍳", label: "Cooking" },
+    { icon: "🧺", label: "Laundry" },
+    { icon: "🌡️", label: "Cooling & Heating" },
+    { icon: "☕", label: "Kitchen" },
+    { icon: "🧹", label: "Cleaning" },
+    { icon: "💧", label: "Water" }
   ];
 
   // ---------------------------------------------------------------
@@ -268,8 +267,8 @@
   }
 
   // A product matches the active category if any of its category tokens overlap
-  // the chip's tokens — so "RICE" matches a "Rice" product, "DALS & BEANS"
-  // matches "Dals" or "Beans", etc.
+  // the chip's tokens — so "Laundry" matches a "Laundry" product,
+  // "Cooling & Heating" matches "Cooling" or "Heating", etc.
   function matchesCategory(p) {
     if (activeCategory === "All") return true;
     const want = catTokens(activeCategory);
@@ -322,7 +321,7 @@
     el.className = "card";
     const thumb = p.image_url
       ? `<img src="${S.escapeHtml(p.image_url)}" alt="${S.escapeHtml(p.name)}" loading="lazy" />`
-      : `<span class="card-thumb-ph">🌾</span>`;
+      : `<span class="card-thumb-ph">🔌</span>`;
 
     // Stock-aware status (stock === null means the product is not tracked).
     const low = Number(cfg.LOW_STOCK_THRESHOLD || 5);

@@ -6,20 +6,23 @@
 window.APP_CONFIG = {
   // ---- Supabase (free backend) -------------------------------------
   // Supabase Dashboard → Project Settings → Data API / API Keys
-  SUPABASE_URL:      "https://icntqusbnzblctwisdvv.supabase.co",
-  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbnRxdXNibnpibGN0d2lzZHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MTM3ODksImV4cCI6MjA5NjE4OTc4OX0.9pBuzDRavaWzQUHMxhqUls-1-O0IGngEFyYNCGAVp-I",
+  // Create your OWN Supabase project for Diamond Flame and paste its
+  // URL + anon key here (do NOT reuse another store's project, or you'll
+  // see that store's products). Until filled in, the site shows a setup screen.
+  SUPABASE_URL:      "https://rwsfaotpdhznspueakze.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3c2Zhb3RwZGh6bnNwdWVha3plIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5NTcyMTksImV4cCI6MjA5NjUzMzIxOX0.92igfOS3aEhWxItKrpem0NrYd9K3fYwJLkKe9wisuL4",
 
   // ---- Your store --------------------------------------------------
-  STORE_NAME:     "Fresh Wholesale Distributor",
-  STORE_TAGLINE:  "Premium quality rice · Best brands, best value",
+  STORE_NAME:     "Diamond Flame Home Appliances",
+  STORE_TAGLINE:  "Wholesale home appliances · Trusted brands, best value",
 
   // WhatsApp number that RECEIVES the orders (your shop).
   // International format, digits only — no +, spaces or dashes.
   STORE_WHATSAPP: "13313049903",
 
   // ---- Money -------------------------------------------------------
-  CURRENCY:   "$",       // symbol shown next to prices
-  TAX_LABEL:  "Tax",     // label for tax line on the invoice
+  CURRENCY:   "Rs ",     // symbol shown next to prices (Pakistani Rupee)
+  TAX_LABEL:  "GST",     // label for tax line on the invoice
   TAX_RATE:   0,         // tax percent applied to orders, e.g. 5 (use 0 for none)
 
   // ---- Admin security ----------------------------------------------
@@ -43,7 +46,7 @@ window.APP_CONFIG = {
   //                 PAYMENT_LINK your checkout URL. You can put {amount} and
   //                 {invoice} placeholders in the URL and they’ll be filled in.
   PAYMENT_PROVIDER: "paypal",                              // "paypal" | "link" | "" (off)
-  PAYMENT_LINK:     "https://www.paypal.com/paypalme/trendholic",
-  PAYMENT_CURRENCY: "USD",                                 // ISO code for PayPal.me amounts
+  PAYMENT_LINK:     "https://www.paypal.com/paypalme/diamondflame",
+  PAYMENT_CURRENCY: "PKR",                                 // ISO code for PayPal.me amounts
   PAYMENT_BRAND:    "PayPal"                               // shown in the "secured by …" line
 };

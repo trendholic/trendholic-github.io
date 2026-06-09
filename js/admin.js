@@ -280,7 +280,7 @@
       row.className = "admin-row";
       const thumb = p.image_url
         ? `<img src="${S.escapeHtml(p.image_url)}" alt="" />`
-        : `<span class="card-thumb-ph">🌾</span>`;
+        : `<span class="card-thumb-ph">🔌</span>`;
       row.innerHTML = `
         <div class="admin-thumb" title="Change photo">
           ${thumb}

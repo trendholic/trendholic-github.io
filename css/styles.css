@@ -1,9 +1,10 @@
 /* ===================================================================
-   Trendholic Wholesale — styles
+   Diamond Flame Home Appliances — styles
+   (--green / --green-dark hold the brand "flame" accent color)
    =================================================================== */
 :root {
-  --green: #1f8a4c;
-  --green-dark: #166b3a;
+  --green: #e2541d;
+  --green-dark: #b23c12;
   --ink: #1c2024;
   --muted: #6b7280;
   --line: #e6e8eb;

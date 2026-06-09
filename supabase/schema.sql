@@ -1,5 +1,5 @@
 -- =====================================================================
---  Trendholic Wholesale — Supabase database schema
+--  Diamond Flame Home Appliances — Supabase database schema
 --  Run this whole file once in:  Supabase Dashboard → SQL Editor → New query
 --  It creates the tables, security rules (RLS), triggers and sample data.
 -- =====================================================================
@@ -360,17 +360,35 @@ create policy reseller_docs_delete on storage.objects
 -- =====================================================================
 --  SAMPLE PRODUCTS  (edit / delete these from the Admin page later)
 -- =====================================================================
-insert into public.products (name, description, image_url, category, unit, price, moq, sort) values
-  ('Bahar Sella Rice 10LB x 4',    'Premium quality sella rice, perfect for every kitchen.', 'images/bahar-sella.jpg',     'Rice', 'Case (4 x 10 lb)', 48, 1, 10),
-  ('Falak Extreme Rice x 4',       'Extra long grain rice for rich taste and aroma.',        'images/falak.jpg',           'Rice', 'Case (x4)',        48, 1, 20),
-  ('M-Meraj Sella Rice 10LB x 4',  'High quality sella rice for fluffy, delicious meals.',   'images/meraj.jpg',           'Rice', 'Case (4 x 10 lb)', 40, 1, 30),
-  ('Ujala Basmati Rice 10LB x 4',  'Aromatic basmati rice with extra long grains.',          'images/ujala.jpg',           'Rice', 'Case (4 x 10 lb)', 40, 1, 40),
-  ('Aahubarah Sella Rice 10LB x 4','Quality sella rice for everyday cooking.',               'images/aahubarah-sella.jpg', 'Rice', 'Case (4 x 10 lb)', 62, 1, 50),
-  ('Aahubarah Organic Rice 10LB x 4','100% organic rice, healthy and natural.',              'images/aahubarah-organic.jpg','Rice', 'Case (4 x 10 lb)', 62, 1, 60),
-  ('Mother Sella Rice 10LB x 4',   'Trusted quality sella rice for every family.',           'images/mother.jpg',          'Rice', 'Case (4 x 10 lb)', 64, 1, 70),
-  ('Baghlan Sella Rice 10LB x 4',  'Premium rice from the finest fields.',                   'images/baghlan.jpg',         'Rice', 'Case (4 x 10 lb)', 62, 1, 80),
-  ('Bahar Basmati 10LB x 4',       'Aromatic basmati rice for special occasions.',           'images/bahar-basmati.jpg',   'Rice', 'Case (4 x 10 lb)', 42, 1, 90),
-  ('Kabuli Sella Rice 10LB x 4',   'High quality sella rice for delicious meals.',           'images/kabuli.jpg',          'Rice', 'Case (4 x 10 lb)', 52, 1, 100)
+insert into public.products (name, description, category, unit, price, cost, moq, stock, sort) values
+  -- Refrigeration
+  ('Double Door Refrigerator 350L', 'Frost-free double-door fridge, energy efficient inverter compressor.', 'Refrigeration', 'Unit', 420, 330, 1, 18, 10),
+  ('Single Door Refrigerator 190L', 'Compact direct-cool single-door fridge, ideal for small spaces.',     'Refrigeration', 'Unit', 240, 185, 1, 25, 20),
+  ('Chest Freezer 200L',            'Deep chest freezer with fast-freeze mode for bulk storage.',          'Refrigeration', 'Unit', 310, 245, 1, 12, 30),
+  -- Cooking
+  ('4-Burner Gas Stove',            'Stainless steel 4-burner gas cooktop with auto-ignition.',            'Cooking', 'Unit', 95,  62,  2, 40, 40),
+  ('Microwave Oven 25L',            'Convection microwave with grill and 10 power levels.',                'Cooking', 'Unit', 110, 78,  1, 30, 50),
+  ('Electric Oven Toaster Griller 45L', 'Large-capacity OTG for baking, grilling and toasting.',           'Cooking', 'Unit', 130, 95,  1, 16, 60),
+  -- Laundry
+  ('Fully Automatic Washing Machine 7kg', 'Front-load washer with multiple wash programs and quick wash.', 'Laundry', 'Unit', 320, 250, 1, 14, 70),
+  ('Semi-Automatic Washing Machine 8kg',  'Twin-tub washer, gentle on clothes and easy on power.',        'Laundry', 'Unit', 210, 160, 1, 20, 80),
+  ('Clothes Dryer 6kg',             'Vented tumble dryer with sensor-dry and anti-crease.',                'Laundry', 'Unit', 280, 215, 1, 10, 90),
+  -- Cooling & Heating
+  ('1.5 Ton Split Air Conditioner', 'Inverter split AC with copper coil and turbo cooling.',               'Cooling & Heating', 'Unit', 480, 380, 1, 15, 100),
+  ('Air Cooler 50L',                'High-capacity desert air cooler with honeycomb pads.',                'Cooling & Heating', 'Unit', 130, 92,  1, 22, 110),
+  ('Ceiling Fan 56"',               'High-speed ceiling fan with rust-free aluminium blades.',             'Cooling & Heating', 'Carton (x2)', 70, 48, 2, 48, 120),
+  ('Room Heater 2000W',             'Fan-forced room heater with adjustable thermostat.',                  'Cooling & Heating', 'Unit', 45,  30,  3, 35, 130),
+  -- Kitchen (small appliances)
+  ('Mixer Grinder 750W',            'Powerful mixer grinder with 3 stainless steel jars.',                 'Kitchen', 'Unit', 55,  36,  3, 45, 140),
+  ('2-Slice Pop-up Toaster',        'Auto pop-up toaster with browning control.',                          'Kitchen', 'Box (x4)', 80, 52, 1, 30, 150),
+  ('Electric Kettle 1.7L',          'Stainless steel kettle with auto shut-off and boil-dry protection.',  'Kitchen', 'Box (x4)', 90, 58, 1, 28, 160),
+  ('Hand Blender 400W',             'Multi-speed hand blender with whisk and chopper attachments.',        'Kitchen', 'Box (x6)', 120, 78, 1, 24, 170),
+  -- Cleaning
+  ('Vacuum Cleaner 1600W',          'Bagless vacuum with HEPA filter and powerful suction.',               'Cleaning', 'Unit', 75,  50,  2, 26, 180),
+  ('Steam Iron 1800W',             'Ceramic-soleplate steam iron with vertical steam and spray.',          'Cleaning', 'Box (x6)', 78, 48, 1, 32, 190),
+  -- Water
+  ('Storage Water Heater 25L',      'Glass-lined geyser with multi-safety system and indicator.',          'Water', 'Unit', 140, 100, 1, 18, 200),
+  ('RO+UV Water Purifier',          '7-stage RO+UV purifier with mineralizer and 10L storage.',            'Water', 'Unit', 165, 120, 1, 20, 210)
 on conflict do nothing;
 
 -- =====================================================================
