@@ -43,6 +43,7 @@ create table if not exists public.products (
   cost        numeric not null default 0 check (cost >= 0),  -- purchase cost per unit (for profit/loss)
   moq         integer not null default 1 check (moq >= 1),  -- minimum order quantity
   stock       integer,                                 -- on-hand qty; NULL = untracked / unlimited
+  warranty    text,                                    -- e.g. "1 Year Manufacturer Warranty" (optional)
   sort        integer not null default 0,
   active      boolean not null default true,
   created_at  timestamptz not null default now()
@@ -52,6 +53,7 @@ alter table public.products add column if not exists description text;
 alter table public.products add column if not exists image_url   text;
 alter table public.products add column if not exists stock       integer;
 alter table public.products add column if not exists cost        numeric not null default 0;
+alter table public.products add column if not exists warranty    text;
 
 -- ---------------------------------------------------------------------
 -- 3. ORDERS  (one row per placed order; line items stored as JSON)
